@@ -506,7 +506,12 @@ function AppLayout() {
             >
               <label className="block text-xs font-semibold text-slate-300">Invite new member by Email</label>
               {inviteMsg && (
-                <p className={cn('text-[11px] p-2 rounded', inviteMsg.includes('sent') ? 'bg-emerald-950 text-emerald-300' : 'bg-red-950 text-red-300')}>
+                <p className={cn(
+                  'text-[11px] p-2 rounded font-semibold border',
+                  inviteMsg.includes('sent')
+                    ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800'
+                    : 'bg-amber-950/90 text-amber-300 border-amber-800'
+                )}>
                   {inviteMsg}
                 </p>
               )}
