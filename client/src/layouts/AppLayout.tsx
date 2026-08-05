@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
-import { disconnectSocket } from '@/socket/socket';
+import { disconnectSocket, getSocket } from '@/socket/socket';
 import { SkipliLogo } from '@/components/SkipliLogo';
-import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2 } from 'lucide-react';
+import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2, Bell, Check, X as XIcon } from 'lucide-react';
 import { cn } from '@/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
 import { authApi } from '@/services/auth.service';
-import { githubApi } from '@/services/invitation.service';
+import { invitationApi, githubApi } from '@/services/invitation.service';
+import { Invitation } from '@/types';
 import avatarImg from '@/images/avata.png';
 
 function AppLayout() {
@@ -16,17 +17,45 @@ function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { boardId } = useParams<{ boardId?: string }>();
+  const queryClient = useQueryClient();
 
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [updating, setUpdating] = useState(false);
   const [msg, setMsg] = useState('');
+
+  // Fetch pending invitations
+  const { data: invitations = [], refetch: refetchInvitations } = useQuery<Invitation[]>({
+    queryKey: ['invitations'],
+    queryFn: async () => (await invitationApi.getMyInvitations()).data.data,
+  });
 
   // Fetch current board if in board detail view
   const { data: currentBoard } = useQuery({
     queryKey: ['board', boardId],
     queryFn: async () => (await boardApi.getById(boardId!)).data.data,
     enabled: !!boardId,
+  });
+
+  // Listen for socket invitation events
+  useEffect(() => {
+    const socket = getSocket();
+    const handler = () => refetchInvitations();
+    socket.on('invitation:received', handler);
+    return () => {
+      socket.off('invitation:received', handler);
+    };
+  }, [refetchInvitations]);
+
+  // Respond to invitation mutation
+  const respondMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'accepted' | 'declined' }) =>
+      invitationApi.respond(id, status),
+    onSuccess: () => {
+      refetchInvitations();
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+    },
   });
 
   const handleLogout = () => {
@@ -72,8 +101,22 @@ function AppLayout() {
           </div>
         </div>
 
-        {/* Right: Rocket Icon + Avatar Image */}
+        {/* Right: Bell Notifications + Rocket Icon + Avatar Image */}
         <div className="flex items-center gap-3">
+          {/* Bell Icon with badge */}
+          <button
+            onClick={() => setShowNotificationsModal(true)}
+            className="relative text-slate-400 hover:text-white transition-colors p-1"
+            title="Notifications & Invitations"
+          >
+            <Bell className="w-4 h-4" />
+            {invitations.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-skipli-red text-white text-[10px] font-bold flex items-center justify-center">
+                {invitations.length}
+              </span>
+            )}
+          </button>
+
           <button className="text-slate-400 hover:text-white transition-colors" title="Quick actions">
             <Rocket className="w-4 h-4" />
           </button>
@@ -180,6 +223,53 @@ function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Notifications / Pending Invitations Modal */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#282E33] border border-slate-700 text-slate-200 rounded-xl w-full max-w-sm p-5 space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                <Bell className="w-4 h-4 text-blue-400" /> Pending Invitations
+              </h3>
+              <button onClick={() => setShowNotificationsModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {invitations.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No pending invitations</p>
+            ) : (
+              <div className="space-y-2.5 max-h-60 overflow-y-auto">
+                {invitations.map((inv) => (
+                  <div key={inv.id} className="p-3 bg-[#1D2125] border border-slate-700 rounded-lg flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-semibold text-slate-200">Board Invitation</p>
+                      <p className="text-[11px] text-slate-400">Board ID: {inv.boardId.slice(0, 8)}...</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => respondMutation.mutate({ id: inv.id, status: 'accepted' })}
+                        className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded"
+                        title="Accept"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => respondMutation.mutate({ id: inv.id, status: 'declined' })}
+                        className="p-1.5 bg-red-600 hover:bg-red-500 text-white rounded"
+                        title="Decline"
+                      >
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Account Settings / Profile Modal */}
       {showProfileModal && (
