@@ -534,22 +534,38 @@ function AppLayout() {
             </form>
 
             <div className="space-y-2 max-h-48 overflow-y-auto pt-2 border-t border-slate-700">
-              <p className="text-[11px] text-slate-400 font-semibold mb-1">Current Members</p>
-              <div className="p-3 bg-[#1D2125] border border-slate-700 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img src={avatarImg} alt="Avatar" className="w-8 h-8 rounded-full border border-red-500 object-cover" />
-                  <div>
-                    <p className="font-bold text-xs text-white flex items-center gap-1.5">
-                      {user?.displayName || 'User'}
-                      <span className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-800/80 font-bold">You (Admin)</span>
-                    </p>
-                    <p className="text-[11px] text-slate-400">{user?.email}</p>
+              <p className="text-[11px] text-slate-400 font-semibold mb-1">
+                Current Members ({(currentBoard || userBoards[0])?.members.length || 1})
+              </p>
+              {((currentBoard || userBoards[0])?.members || [user?.id]).map((memId, idx) => {
+                const isCurrent = memId === user?.id;
+                const isOwner = memId === (currentBoard || userBoards[0])?.ownerId;
+                const name = isCurrent ? user?.displayName || 'User' : `User ${idx + 1}`;
+                const email = isCurrent ? user?.email : `member_${idx + 1}@workspace.dev`;
+
+                return (
+                  <div key={memId} className="p-3 bg-[#1D2125] border border-slate-700 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img src={avatarImg} alt="Avatar" className="w-8 h-8 rounded-full border border-red-500 object-cover" />
+                      <div>
+                        <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                          {name}
+                          {isCurrent && (
+                            <span className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-800/80 font-bold">You (Admin)</span>
+                          )}
+                          {!isCurrent && isOwner && (
+                            <span className="text-[10px] text-purple-400 bg-purple-950/80 px-1.5 py-0.2 rounded border border-purple-800/80 font-bold">Owner</span>
+                          )}
+                        </p>
+                        <p className="text-[11px] text-slate-400">{email}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded font-semibold border border-emerald-800">
+                      Active
+                    </span>
                   </div>
-                </div>
-                <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded font-semibold border border-emerald-800">
-                  Active
-                </span>
-              </div>
+                );
+              })}
             </div>
 
             <div className="pt-2 border-t border-slate-700 flex justify-end">
