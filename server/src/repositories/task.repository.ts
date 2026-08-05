@@ -1,7 +1,17 @@
 import { db } from '../config/firebase';
 import { Task } from '../models';
+import { loadStore, saveStore } from '../utils/fileStore';
 
-const memoryTasks = new Map<string, Task>();
+const FILE_NAME = 'tasks.json';
+
+const initialTasks = loadStore<Record<string, Task>>(FILE_NAME, {});
+const memoryTasks = new Map<string, Task>(Object.entries(initialTasks));
+
+function persistTasks() {
+  const obj: Record<string, Task> = {};
+  memoryTasks.forEach((val, key) => { obj[key] = val; });
+  saveStore(FILE_NAME, obj);
+}
 
 const getRef = (boardId: string, cardId: string) =>
   db.collection('boards').doc(boardId).collection('cards').doc(cardId).collection('tasks');
@@ -17,6 +27,7 @@ export const taskRepository = {
       updatedAt: now as any,
     };
     memoryTasks.set(id, task);
+    persistTasks();
     try {
       await getRef(task.boardId, task.cardId).doc(id).set(task);
     } catch {
@@ -68,6 +79,7 @@ export const taskRepository = {
     const existing = memoryTasks.get(taskId);
     if (existing) {
       memoryTasks.set(taskId, { ...existing, ...data, updatedAt: new Date().toISOString() as any });
+      persistTasks();
     }
     try {
       await getRef(boardId, cardId).doc(taskId).update(data);
@@ -78,6 +90,7 @@ export const taskRepository = {
 
   async delete(boardId: string, cardId: string, taskId: string): Promise<void> {
     memoryTasks.delete(taskId);
+    persistTasks();
     try {
       await getRef(boardId, cardId).doc(taskId).delete();
     } catch {

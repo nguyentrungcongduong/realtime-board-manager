@@ -1,7 +1,17 @@
 import { db } from '../config/firebase';
 import { Card } from '../models';
+import { loadStore, saveStore } from '../utils/fileStore';
 
-const memoryCards = new Map<string, Card>();
+const FILE_NAME = 'cards.json';
+
+const initialCards = loadStore<Record<string, Card>>(FILE_NAME, {});
+const memoryCards = new Map<string, Card>(Object.entries(initialCards));
+
+function persistCards() {
+  const obj: Record<string, Card> = {};
+  memoryCards.forEach((val, key) => { obj[key] = val; });
+  saveStore(FILE_NAME, obj);
+}
 
 const getRef = (boardId: string) =>
   db.collection('boards').doc(boardId).collection('cards');
@@ -16,6 +26,7 @@ export const cardRepository = {
       createdAt: now as any,
     };
     memoryCards.set(id, card);
+    persistCards();
     try {
       await getRef(card.boardId).doc(id).set(card);
     } catch {
@@ -59,6 +70,7 @@ export const cardRepository = {
     const existing = memoryCards.get(cardId);
     if (existing) {
       memoryCards.set(cardId, { ...existing, ...data });
+      persistCards();
     }
     try {
       await getRef(boardId).doc(cardId).update(data);
@@ -69,6 +81,7 @@ export const cardRepository = {
 
   async delete(boardId: string, cardId: string): Promise<void> {
     memoryCards.delete(cardId);
+    persistCards();
     try {
       await getRef(boardId).doc(cardId).delete();
     } catch {

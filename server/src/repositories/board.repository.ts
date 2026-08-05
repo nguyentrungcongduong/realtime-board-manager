@@ -1,8 +1,18 @@
 import { db } from '../config/firebase';
 import { Board } from '../models';
+import { loadStore, saveStore } from '../utils/fileStore';
 
 const COLLECTION = 'boards';
-const memoryBoards = new Map<string, Board>();
+const FILE_NAME = 'boards.json';
+
+const initialBoards = loadStore<Record<string, Board>>(FILE_NAME, {});
+const memoryBoards = new Map<string, Board>(Object.entries(initialBoards));
+
+function persistBoards() {
+  const obj: Record<string, Board> = {};
+  memoryBoards.forEach((val, key) => { obj[key] = val; });
+  saveStore(FILE_NAME, obj);
+}
 
 export const boardRepository = {
   async create(data: Omit<Board, 'id' | 'createdAt'>): Promise<Board> {
@@ -14,6 +24,7 @@ export const boardRepository = {
       createdAt: now as any,
     };
     memoryBoards.set(id, board);
+    persistBoards();
     try {
       await db.collection(COLLECTION).doc(id).set(board);
     } catch {
@@ -61,6 +72,7 @@ export const boardRepository = {
     const existing = memoryBoards.get(id);
     if (existing) {
       memoryBoards.set(id, { ...existing, ...data });
+      persistBoards();
     }
     try {
       await db.collection(COLLECTION).doc(id).update(data);
@@ -71,6 +83,7 @@ export const boardRepository = {
 
   async delete(id: string): Promise<void> {
     memoryBoards.delete(id);
+    persistBoards();
     try {
       await db.collection(COLLECTION).doc(id).delete();
     } catch {

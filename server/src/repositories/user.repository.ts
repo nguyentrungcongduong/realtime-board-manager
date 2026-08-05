@@ -1,8 +1,18 @@
 import { db } from '../config/firebase';
 import { User } from '../models';
+import { loadStore, saveStore } from '../utils/fileStore';
 
 const COLLECTION = 'users';
-const memoryUsers = new Map<string, User>();
+const FILE_NAME = 'users.json';
+
+const initialUsers = loadStore<Record<string, User>>(FILE_NAME, {});
+const memoryUsers = new Map<string, User>(Object.entries(initialUsers));
+
+function persistUsers() {
+  const obj: Record<string, User> = {};
+  memoryUsers.forEach((val, key) => { obj[key] = val; });
+  saveStore(FILE_NAME, obj);
+}
 
 export const userRepository = {
   async create(data: Omit<User, 'id' | 'createdAt'>): Promise<User> {
@@ -14,6 +24,7 @@ export const userRepository = {
       createdAt: now as any,
     };
     memoryUsers.set(id, user);
+    persistUsers();
     try {
       await db.collection(COLLECTION).doc(id).set(user);
     } catch {
@@ -49,6 +60,7 @@ export const userRepository = {
     const existing = memoryUsers.get(id);
     if (existing) {
       memoryUsers.set(id, { ...existing, ...data });
+      persistUsers();
     }
     try {
       await db.collection(COLLECTION).doc(id).update(data);
