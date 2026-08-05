@@ -30,6 +30,10 @@ function AppLayout() {
   const [updating, setUpdating] = useState(false);
   const [msg, setMsg] = useState('');
 
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteMsg, setInviteMsg] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+
   // Fetch pending invitations
   const { data: invitations = [], refetch: refetchInvitations } = useQuery<Invitation[]>({
     queryKey: ['invitations'],
@@ -473,7 +477,53 @@ function AppLayout() {
               Members of your Workspace can view, join, and collaborate across shared boards.
             </p>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            {/* Invite Form */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!inviteEmail.trim()) return;
+                setInviteLoading(true);
+                setInviteMsg('');
+                try {
+                  const targetBoardId = boardId || 'board_default';
+                  await invitationApi.invite(targetBoardId, inviteEmail);
+                  setInviteMsg(`Invitation sent to ${inviteEmail}!`);
+                  setInviteEmail('');
+                } catch (err: any) {
+                  const m = err?.response?.data?.message;
+                  setInviteMsg(m || 'Failed to send invitation');
+                } finally {
+                  setInviteLoading(false);
+                }
+              }}
+              className="space-y-2 pt-1 border-t border-slate-700"
+            >
+              <label className="block text-xs font-semibold text-slate-300">Invite new member by Email</label>
+              {inviteMsg && (
+                <p className={cn('text-[11px] p-2 rounded', inviteMsg.includes('sent') ? 'bg-emerald-950 text-emerald-300' : 'bg-red-950 text-red-300')}>
+                  {inviteMsg}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="Enter member's email..."
+                  className="flex-1 bg-[#1D2125] border border-slate-700 px-3 py-1.5 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!inviteEmail.trim() || inviteLoading}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-xs transition-colors flex items-center gap-1 shrink-0 disabled:opacity-50"
+                >
+                  {inviteLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Invite Member'}
+                </button>
+              </div>
+            </form>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto pt-2 border-t border-slate-700">
+              <p className="text-[11px] text-slate-400 font-semibold mb-1">Current Members</p>
               <div className="p-3 bg-[#1D2125] border border-slate-700 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <img src={avatarImg} alt="Avatar" className="w-8 h-8 rounded-full border border-red-500 object-cover" />
