@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { disconnectSocket, getSocket } from '@/socket/socket';
 import { SkipliLogo } from '@/components/SkipliLogo';
-import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2, Bell, Check, X as XIcon, Github, GitBranch, GitPullRequest, GitCommit, AlertCircle, ExternalLink } from 'lucide-react';
+import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2, Bell, Check, X as XIcon, Github, GitBranch, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
@@ -62,17 +62,18 @@ function AppLayout() {
     },
   });
 
+  const [githubNotConnected, setGithubNotConnected] = useState(false);
+
   const handleFetchGithubRepos = async () => {
     setShowGithubExplorer(true);
     setLoadingGithubRepos(true);
+    setGithubNotConnected(false);
     try {
       const res = await githubApi.getRepositories();
       setGithubRepos((res.data.data as any[]) || []);
     } catch {
-      setGithubRepos([
-        { id: 1, name: 'realtime-board-manager', fullName: 'nguyentrungcongduong/realtime-board-manager', private: false, url: 'https://github.com/nguyentrungcongduong/realtime-board-manager' },
-        { id: 2, name: 'mini-trello-backend', fullName: 'nguyentrungcongduong/mini-trello-backend', private: true, url: 'https://github.com/nguyentrungcongduong/mini-trello-backend' }
-      ]);
+      setGithubNotConnected(true);
+      setGithubRepos([]);
     } finally {
       setLoadingGithubRepos(false);
     }
@@ -281,6 +282,30 @@ function AppLayout() {
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
               </div>
+            ) : githubNotConnected ? (
+              <div className="text-center py-6 space-y-3">
+                <Github className="w-10 h-10 text-blue-400 mx-auto" />
+                <h4 className="font-bold text-sm text-white">Connect Your GitHub Account</h4>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  Link your GitHub account to load your real repositories, branches, commits, PRs, and issues.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await githubApi.getOAuthUrl();
+                      window.location.href = res.data.data.url;
+                    } catch {
+                      alert('GitHub Client ID is not configured in server .env');
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-xs transition-colors flex items-center justify-center gap-2 mx-auto"
+                >
+                  <Github className="w-4 h-4" /> Connect with GitHub
+                </button>
+              </div>
+            ) : githubRepos.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">No repositories found in your GitHub account</p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto text-xs">
                 {githubRepos.map((repo) => (
@@ -294,17 +319,6 @@ function AppLayout() {
                       </a>
                     </div>
                     <p className="text-[11px] text-slate-400 truncate">{repo.fullName}</p>
-                    <div className="flex gap-2 pt-1">
-                      <span className="bg-purple-950/80 text-purple-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                        <GitPullRequest className="w-3 h-3" /> 2 PRs
-                      </span>
-                      <span className="bg-blue-950/80 text-blue-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                        <GitCommit className="w-3 h-3" /> 14 Commits
-                      </span>
-                      <span className="bg-amber-950/80 text-amber-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> 1 Issue
-                      </span>
-                    </div>
                   </div>
                 ))}
               </div>
