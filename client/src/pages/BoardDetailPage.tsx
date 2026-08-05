@@ -91,14 +91,13 @@ function TaskCard({ task, onClick }: TaskCardProps) {
 interface KanbanColumnProps {
   card: Card;
   tasks: Task[];
-  canDelete: boolean;
   onDrop: (taskId: string, fromCardId: string, toCardId: string) => void;
   onOpenCreateModal: (cardId: string, status: TaskStatus) => void;
   onTaskClick: (task: Task) => void;
   onDeleteCard: (cardId: string) => void;
 }
 
-function KanbanColumn({ card, tasks, canDelete, onDrop, onOpenCreateModal, onTaskClick, onDeleteCard }: KanbanColumnProps) {
+function KanbanColumn({ card, tasks, onDrop, onOpenCreateModal, onTaskClick, onDeleteCard }: KanbanColumnProps) {
   const [{ isOver }, drop] = useDrop({
     accept: DND_TYPE,
     drop: (item: { taskId: string; cardId: string; status: TaskStatus }) => {
@@ -121,15 +120,13 @@ function KanbanColumn({ card, tasks, canDelete, onDrop, onOpenCreateModal, onTas
       <div className="flex items-center justify-between px-1 py-0.5">
         <h4 className="font-bold text-xs text-slate-200">{card.name}</h4>
         <div className="flex items-center gap-1">
-          {canDelete && (
-            <button
-              onClick={() => onDeleteCard(card.id)}
-              className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-0.5 transition-opacity"
-              title="Delete list"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          )}
+          <button
+            onClick={() => onDeleteCard(card.id)}
+            className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-1 transition-all rounded hover:bg-slate-800"
+            title="Delete list"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
           <span className="text-[11px] text-slate-500 font-semibold">...</span>
         </div>
       </div>
@@ -805,6 +802,21 @@ function BoardDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', boardId] }),
   });
 
+  const resetDefaultListsMutation = useMutation({
+    mutationFn: async () => {
+      // Delete all existing cards
+      await Promise.all(cards.map((c) => cardApi.delete(boardId!, c.id)));
+      // Re-create default 3 cards
+      await cardApi.create(boardId!, { name: 'To do', description: '' });
+      await cardApi.create(boardId!, { name: 'Doing', description: '' });
+      await cardApi.create(boardId!, { name: 'Done', description: '' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cards', boardId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', boardId] });
+    },
+  });
+
   useEffect(() => {
     if (boardId && cards.length === 0 && !boardLoading && !hasCreatedCardRef[boardId]) {
       hasCreatedCardRef[boardId] = true;
@@ -922,18 +934,32 @@ function BoardDetailPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1 bg-black/20 hover:bg-black/30 text-white rounded text-xs font-semibold transition-colors border border-white/20"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Invite member</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (confirm('Reset lists to default 3 lists (To do, Doing, Done)?')) {
+                  resetDefaultListsMutation.mutate();
+                }
+              }}
+              className="px-2.5 py-1 bg-black/20 hover:bg-black/30 text-white/80 hover:text-white rounded text-xs font-semibold transition-colors border border-white/20"
+              title="Reset lists to default (To do, Doing, Done)"
+            >
+              Reset Lists
+            </button>
+
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1 bg-black/20 hover:bg-black/30 text-white rounded text-xs font-semibold transition-colors border border-white/20"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Invite member</span>
+            </button>
+          </div>
         </div>
 
         {/* Main Kanban Canvas - Dynamic Column Rendering */}
         <div className="flex-1 p-6 overflow-x-auto flex gap-4 items-start bg-trello-workspace">
-          {tasksLoading ? (
+          {tasksLoading || resetDefaultListsMutation.isPending ? (
             <div className="flex justify-center py-12 w-full">
               <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
             </div>
@@ -943,7 +969,6 @@ function BoardDetailPage() {
                 <KanbanColumn
                   key={card.id}
                   card={card}
-                  canDelete={cards.length > 1}
                   tasks={filteredTasks.filter((t) => t.cardId === card.id)}
                   onDrop={handleDrop}
                   onOpenCreateModal={handleOpenCreateModal}
