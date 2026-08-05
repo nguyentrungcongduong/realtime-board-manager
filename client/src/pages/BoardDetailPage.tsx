@@ -6,13 +6,13 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { boardApi, cardApi, taskApi } from '@/services/board.service';
 import { invitationApi } from '@/services/invitation.service';
 import { joinBoard, leaveBoard, getSocket } from '@/socket/socket';
-import { Task, Card, TaskStatus, Board } from '@/types';
+import { Task, Card, TaskStatus, Board, TaskPriority } from '@/types';
 import { cn, formatDate, isOverdue } from '@/utils';
 import {
   Plus, Loader2, UserPlus, X, User,
   Eye, AlignLeft, List, Archive, Github,
   Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle,
-  Trash2, Calendar
+  Trash2, Calendar, Filter
 } from 'lucide-react';
 import avatarImg from '@/images/avata.png';
 
@@ -537,6 +537,7 @@ function BoardDetailPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState<TaskPriority | 'all'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
 
   // Fetch board info
@@ -631,9 +632,11 @@ function BoardDetailPage() {
     }
   }, [deleteCardMutation]);
 
-  const filteredTasks = tasks.filter((t) =>
-    t.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPriority = selectedPriority === 'all' || (t.priority || 'medium') === selectedPriority;
+    return matchesSearch && matchesPriority;
+  });
 
   if (boardLoading) {
     return (
@@ -650,7 +653,7 @@ function BoardDetailPage() {
       <div className="-m-6 flex flex-col h-[calc(100vh-3rem)]">
         {/* Magenta / Purple Board Bar matching Figma Image 4 */}
         <div className="bg-trello-boardbar px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm flex-wrap gap-2">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <h1 className="font-bold text-sm text-white">{board.name}</h1>
 
             {/* Real-time Task Search Bar */}
@@ -659,8 +662,27 @@ function BoardDetailPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search cards..."
-              className="bg-black/20 text-white placeholder-white/60 px-2.5 py-1 rounded text-xs border border-white/20 focus:outline-none focus:border-white/50 w-40"
+              className="bg-black/20 text-white placeholder-white/60 px-2.5 py-1 rounded text-xs border border-white/20 focus:outline-none focus:border-white/50 w-36"
             />
+
+            {/* Priority Filter Pills */}
+            <div className="hidden sm:flex items-center gap-1 bg-black/20 p-0.5 rounded border border-white/10 text-[10px]">
+              <Filter className="w-3 h-3 text-white/60 ml-1" />
+              {(['all', 'high', 'medium', 'low'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setSelectedPriority(p)}
+                  className={cn(
+                    'px-2 py-0.5 rounded font-semibold uppercase transition-colors',
+                    selectedPriority === p
+                      ? 'bg-white text-trello-boardbar shadow-xs'
+                      : 'text-white/70 hover:text-white'
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
