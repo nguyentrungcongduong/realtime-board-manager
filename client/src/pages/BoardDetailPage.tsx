@@ -539,6 +539,7 @@ function BoardDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<TaskPriority | 'all'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
+  const hasCreatedCardRef = useState<{ [key: string]: boolean }>({})[0];
 
   // Fetch board info
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
@@ -566,10 +567,11 @@ function BoardDetailPage() {
   });
 
   useEffect(() => {
-    if (cards.length === 0 && !boardLoading && boardId) {
+    if (boardId && cards.length === 0 && !boardLoading && !hasCreatedCardRef[boardId]) {
+      hasCreatedCardRef[boardId] = true;
       createDefaultCardMutation.mutate();
     }
-  }, [cards, boardLoading, boardId]);
+  }, [cards.length, boardLoading, boardId]);
 
   // Fetch all tasks
   const { data: fetchedTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
@@ -584,9 +586,10 @@ function BoardDetailPage() {
     enabled: cards.length > 0,
   });
 
+  const fetchedTasksJson = JSON.stringify(fetchedTasks);
   useEffect(() => {
-    setTasks(fetchedTasks);
-  }, [fetchedTasks]);
+    setTasks(JSON.parse(fetchedTasksJson));
+  }, [fetchedTasksJson]);
 
   // Socket.IO real-time listeners
   useEffect(() => {
