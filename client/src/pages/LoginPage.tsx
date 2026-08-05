@@ -70,28 +70,28 @@ function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden">
-      {/* Bottom Left Image Illustration */}
+    <div className="w-full min-h-screen bg-white relative flex items-center justify-center p-4 overflow-hidden">
+      {/* Bottom Left Image Illustration pinned to bottom-left corner of full screen */}
       <img
         src={leftIllustration}
         alt="Illustration Left"
-        className="hidden md:block absolute bottom-0 left-0 w-80 lg:w-[360px] pointer-events-none object-contain select-none"
+        className="hidden md:block absolute bottom-0 left-0 w-[300px] lg:w-[400px] xl:w-[450px] max-h-[50vh] object-contain object-bottom pointer-events-none select-none z-0"
       />
 
-      {/* Bottom Right Image Illustration */}
+      {/* Bottom Right Image Illustration pinned to bottom-right corner of full screen */}
       <img
         src={rightIllustration}
         alt="Illustration Right"
-        className="hidden md:block absolute bottom-0 right-0 w-80 lg:w-[360px] pointer-events-none object-contain select-none"
+        className="hidden md:block absolute bottom-0 right-0 w-[300px] lg:w-[400px] xl:w-[450px] max-h-[50vh] object-contain object-bottom pointer-events-none select-none z-0"
       />
 
-      {/* Main Card */}
-      <div className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded p-8 shadow-xs text-center">
+      {/* Main Centered Login / Verification Card */}
+      <div className="relative z-10 w-full max-w-[400px] bg-white border border-slate-200 rounded p-8 shadow-xs text-center">
         {step === 'email' ? (
           <>
-            {/* Skipli Red S Logo */}
-            <div className="flex justify-center mb-4">
-              <SkipliLogo className="w-10 h-10" />
+            {/* Logo */}
+            <div className="flex justify-center mb-3">
+              <SkipliLogo className="w-9 h-9" />
             </div>
 
             <p className="text-xs font-semibold text-slate-500 mb-6">Log in to continue</p>
@@ -173,7 +173,7 @@ function LoginPage() {
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-1">
           <p className="hover:underline cursor-pointer">Privacy Policy</p>
-          <p className="leading-tight px-4">
+          <p className="leading-tight px-3">
             This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.
           </p>
         </div>
