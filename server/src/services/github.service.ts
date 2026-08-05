@@ -12,11 +12,12 @@ const getOctokit = async (userId: string): Promise<Octokit> => {
 };
 
 export const githubService = {
-  getOAuthUrl(): string {
+  getOAuthUrl(userId?: string): string {
     const params = new URLSearchParams({
       client_id: env.GITHUB_CLIENT_ID,
       redirect_uri: env.GITHUB_CALLBACK_URL,
       scope: 'read:user user:email repo',
+      state: userId || '',
     });
     return `https://github.com/login/oauth/authorize?${params.toString()}`;
   },

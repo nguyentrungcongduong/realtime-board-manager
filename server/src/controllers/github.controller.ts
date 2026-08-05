@@ -5,9 +5,9 @@ import { param } from '../utils/param';
 import { env } from '../config/env';
 
 export const githubController = {
-  async getOAuthUrl(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getOAuthUrl(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const url = githubService.getOAuthUrl();
+      const url = githubService.getOAuthUrl(req.user?.userId);
       sendSuccess(res, { url });
     } catch (err) { next(err); }
   },
@@ -15,7 +15,8 @@ export const githubController = {
   async handleCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const code = param(req.query.code as string | string[]);
-      await githubService.handleCallback(code, req.user!.userId);
+      const userId = param(req.query.state as string | string[]) || req.user?.userId || 'dev_user';
+      await githubService.handleCallback(code, userId);
       res.redirect(`${env.CLIENT_URL}/github/connected`);
     } catch (err) { next(err); }
   },
