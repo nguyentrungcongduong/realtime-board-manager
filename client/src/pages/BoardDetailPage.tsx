@@ -7,12 +7,12 @@ import { boardApi, cardApi, taskApi } from '@/services/board.service';
 import { invitationApi } from '@/services/invitation.service';
 import { joinBoard, leaveBoard, getSocket } from '@/socket/socket';
 import { Task, Card, TaskStatus, Board } from '@/types';
-import { cn } from '@/utils';
+import { cn, formatDate, isOverdue } from '@/utils';
 import {
   Plus, Loader2, UserPlus, X, User,
   Eye, AlignLeft, List, Archive, Github,
   Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle,
-  Trash2
+  Trash2, Calendar
 } from 'lucide-react';
 import avatarImg from '@/images/avata.png';
 
@@ -33,18 +33,46 @@ function TaskCard({ task, onClick }: TaskCardProps) {
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
+  const priorityColor = {
+    low: 'bg-slate-700 text-slate-300',
+    medium: 'bg-amber-950/80 text-amber-300 border border-amber-800/60',
+    high: 'bg-red-950/80 text-red-300 border border-red-800/60',
+  }[task.priority || 'medium'];
+
   return (
     <div
       ref={drag as unknown as React.Ref<HTMLDivElement>}
       onClick={onClick}
       className={cn(
-        'bg-[#22272B] hover:bg-[#2C333A] text-slate-200 border border-slate-700/60 rounded-md p-2.5 text-xs font-medium cursor-grab active:cursor-grabbing transition-all select-none shadow-sm',
+        'bg-[#22272B] hover:bg-[#2C333A] text-slate-200 border border-slate-700/60 rounded-md p-2.5 text-xs font-medium cursor-grab active:cursor-grabbing transition-all select-none shadow-sm space-y-2',
         isDragging && 'opacity-30'
       )}
     >
-      <p className="line-clamp-2">{task.title}</p>
+      <div className="flex items-start justify-between gap-1">
+        <p className="line-clamp-2 leading-snug">{task.title}</p>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 flex-wrap text-[10px]">
+        {/* Priority Badge */}
+        <span className={cn('px-1.5 py-0.5 rounded font-bold uppercase tracking-wider', priorityColor)}>
+          {task.priority || 'MED'}
+        </span>
+
+        {/* Deadline Badge */}
+        {task.deadline && (
+          <span className={cn(
+            'flex items-center gap-1 font-semibold',
+            isOverdue(task.deadline) ? 'text-red-400' : 'text-slate-400'
+          )}>
+            <Calendar className="w-3 h-3" />
+            {formatDate(task.deadline)}
+          </span>
+        )}
+      </div>
+
+      {/* GitHub Attachments */}
       {task.githubAttachments.length > 0 && (
-        <div className="flex gap-1 mt-2 flex-wrap">
+        <div className="flex gap-1 pt-1 flex-wrap">
           {task.githubAttachments.map((a) => (
             <span key={a.id} className="bg-slate-800 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
               <Github className="w-3 h-3" />
@@ -163,13 +191,18 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
     setComment('');
   };
 
-  const handleAttachGithub = async () => {
-    if (!githubInput.trim()) return;
+  const handleAttachGithub = async (presetValue?: { type: 'pull_request' | 'commit' | 'issue'; val: string | number }) => {
+    const typeToUse = presetValue ? presetValue.type : attachType;
+    const inputToUse = presetValue ? String(presetValue.val) : githubInput;
+    if (!inputToUse.trim()) return;
+
     try {
       await taskApi.attachGitHub(task.boardId, task.cardId, task.id, {
-        type: attachType,
-        number: parseInt(githubInput, 10) || undefined,
-        sha: attachType === 'commit' ? githubInput : undefined,
+        type: typeToUse,
+        number: typeToUse !== 'commit' ? parseInt(inputToUse, 10) || 42 : undefined,
+        sha: typeToUse === 'commit' ? inputToUse : undefined,
+        title: `GitHub ${typeToUse} #${inputToUse}`,
+        url: `https://github.com/nguyentrungcongduong/realtime-board-manager/${typeToUse === 'pull_request' ? 'pull' : typeToUse === 'issue' ? 'issues' : 'commit'}/${inputToUse}`
       });
       setShowGithubMenu(false);
       setGithubInput('');
@@ -339,30 +372,56 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
                 </button>
 
                 {showGithubMenu && (
-                  <div className="mt-2 p-3 bg-[#1D2125] border border-slate-700 rounded-lg space-y-2">
-                    <select
-                      value={attachType}
-                      onChange={(e) => setAttachType(e.target.value as typeof attachType)}
-                      className="w-full bg-slate-800 border border-slate-700 p-1.5 rounded text-slate-200 text-xs"
-                    >
-                      <option value="pull_request">Attach Pull Request</option>
-                      <option value="commit">Attach Commit</option>
-                      <option value="issue">Attach Issue</option>
-                    </select>
+                  <div className="mt-2 p-3 bg-[#1D2125] border border-slate-700 rounded-lg space-y-2.5">
+                    <p className="text-[11px] text-slate-400 font-semibold">Attach GitHub Item</p>
 
-                    <input
-                      value={githubInput}
-                      onChange={(e) => setGithubInput(e.target.value)}
-                      placeholder={attachType === 'commit' ? 'Commit SHA (e.g. 7f8a3b)' : 'PR/Issue # (e.g. 42)'}
-                      className="w-full bg-slate-800 border border-slate-700 p-1.5 rounded text-slate-200 text-xs"
-                    />
+                    {/* Presets */}
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => handleAttachGithub({ type: 'pull_request', val: 12 })}
+                        className="w-full text-left px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-purple-300 flex items-center gap-1.5"
+                      >
+                        <GitPullRequest className="w-3 h-3" /> Quick PR #12
+                      </button>
+                      <button
+                        onClick={() => handleAttachGithub({ type: 'issue', val: 42 })}
+                        className="w-full text-left px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-amber-300 flex items-center gap-1.5"
+                      >
+                        <AlertCircle className="w-3 h-3" /> Quick Issue #42
+                      </button>
+                      <button
+                        onClick={() => handleAttachGithub({ type: 'commit', val: '7f8a3b2' })}
+                        className="w-full text-left px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-blue-300 flex items-center gap-1.5"
+                      >
+                        <GitCommit className="w-3 h-3" /> Quick Commit 7f8a3b2
+                      </button>
+                    </div>
 
-                    <button
-                      onClick={handleAttachGithub}
-                      className="w-full py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-xs"
-                    >
-                      Attach Item
-                    </button>
+                    <div className="border-t border-slate-700 pt-2 space-y-2">
+                      <select
+                        value={attachType}
+                        onChange={(e) => setAttachType(e.target.value as typeof attachType)}
+                        className="w-full bg-slate-800 border border-slate-700 p-1.5 rounded text-slate-200 text-xs"
+                      >
+                        <option value="pull_request">Attach Pull Request</option>
+                        <option value="commit">Attach Commit</option>
+                        <option value="issue">Attach Issue</option>
+                      </select>
+
+                      <input
+                        value={githubInput}
+                        onChange={(e) => setGithubInput(e.target.value)}
+                        placeholder={attachType === 'commit' ? 'Commit SHA (e.g. 7f8a3b)' : 'PR/Issue # (e.g. 42)'}
+                        className="w-full bg-slate-800 border border-slate-700 p-1.5 rounded text-slate-200 text-xs"
+                      />
+
+                      <button
+                        onClick={() => handleAttachGithub()}
+                        className="w-full py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-xs"
+                      >
+                        Attach Custom Item
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
