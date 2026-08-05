@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendError } from '../utils/response';
+import { ZodError } from 'zod';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -18,11 +19,20 @@ export const errorMiddleware = (
   _next: NextFunction
 ): void => {
   console.error(`[Error] ${err.name}: ${err.message}`);
+  if (err.stack) {
+    console.error(err.stack);
+  }
 
   if (err instanceof AppError) {
     sendError(res, err.message, err.statusCode);
     return;
   }
 
-  sendError(res, 'Internal Server Error', 500);
+  if (err instanceof ZodError) {
+    const message = err.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+    sendError(res, message || 'Invalid request payload', 400);
+    return;
+  }
+
+  sendError(res, err.message || 'Internal Server Error', 500);
 };
