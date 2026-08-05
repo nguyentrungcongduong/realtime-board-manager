@@ -777,10 +777,20 @@ function BoardDetailPage() {
   const hasCreatedCardRef = useState<{ [key: string]: boolean }>({})[0];
 
   // Fetch board info
-  const { data: board, isLoading: boardLoading } = useQuery<Board>({
+  const { data: board, isLoading: boardLoading, isError: boardError } = useQuery<Board>({
     queryKey: ['board', boardId],
     queryFn: async () => (await boardApi.getById(boardId!)).data.data,
     enabled: !!boardId,
+    retry: false,
+  });
+
+  const joinMutation = useMutation({
+    mutationFn: () => boardApi.join(boardId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      queryClient.invalidateQueries({ queryKey: ['cards', boardId] });
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+    },
   });
 
   // Fetch cards (Lists)
@@ -890,15 +900,26 @@ function BoardDetailPage() {
     return matchesSearch && matchesPriority;
   });
 
-  if (boardLoading) {
+  if (boardError || (!boardLoading && !board)) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <div className="bg-[#282E33] border border-slate-700 p-8 rounded-xl max-w-md w-full space-y-4 shadow-xl text-slate-200">
+          <UserPlus className="w-10 h-10 text-blue-400 mx-auto" />
+          <h2 className="text-lg font-bold text-white">Join Workspace</h2>
+          <p className="text-xs text-slate-400">
+            You are accessing a shared Workspace link. Click below to join and collaborate in real-time!
+          </p>
+          <button
+            onClick={() => joinMutation.mutate()}
+            disabled={joinMutation.isPending}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition-colors flex items-center justify-center gap-2"
+          >
+            {joinMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Join Workspace'}
+          </button>
+        </div>
       </div>
     );
   }
-
-  if (!board) return null;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -906,7 +927,7 @@ function BoardDetailPage() {
         {/* Magenta / Purple Board Bar matching Figma Image 4 */}
         <div className="bg-trello-boardbar px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <h1 className="font-bold text-sm text-white">{board.name}</h1>
+            <h1 className="font-bold text-sm text-white">{board?.name || 'Board'}</h1>
 
             {/* Real-time Task Search Bar */}
             <input

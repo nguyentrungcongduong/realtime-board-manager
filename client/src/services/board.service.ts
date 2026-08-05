@@ -9,6 +9,12 @@ export const boardApi = {
   getById: (boardId: string) =>
     api.get<{ data: Board }>(`/boards/${boardId}`),
 
+  getPreview: (boardId: string) =>
+    api.get<{ data: { id: string; name: string; description: string; membersCount: number } }>(`/boards/${boardId}/preview`),
+
+  join: (boardId: string) =>
+    api.post<{ data: Board }>(`/boards/${boardId}/join`),
+
   create: (data: { name: string; description: string }) =>
     api.post<{ data: Board }>('/boards', data),
 

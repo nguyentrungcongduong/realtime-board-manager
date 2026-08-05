@@ -16,6 +16,29 @@ export const boardService = {
     return board;
   },
 
+  async getBoardPreview(boardId: string): Promise<{ id: string; name: string; description: string; membersCount: number }> {
+    const board = await boardRepository.findById(boardId);
+    if (!board) throw new AppError('Board not found', 404);
+    return {
+      id: board.id,
+      name: board.name,
+      description: board.description,
+      membersCount: board.members.length,
+    };
+  },
+
+  async joinBoard(boardId: string, userId: string): Promise<Board> {
+    const board = await boardRepository.findById(boardId);
+    if (!board) throw new AppError('Board not found', 404);
+
+    if (!board.members.includes(userId)) {
+      const updatedMembers = [...board.members, userId];
+      await boardRepository.update(boardId, { members: updatedMembers });
+      board.members = updatedMembers;
+    }
+    return board;
+  },
+
   async createBoard(
     userId: string,
     data: { name: string; description: string }
@@ -39,7 +62,8 @@ export const boardService = {
       throw new AppError('Only the board owner can update the board', 403);
     }
 
-    const updated = await boardRepository.update(boardId, data);
+    await boardRepository.update(boardId, data);
+    const updated = await boardRepository.findById(boardId);
     return updated!;
   },
 

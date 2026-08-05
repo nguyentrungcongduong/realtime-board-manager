@@ -25,6 +25,20 @@ export const boardController = {
     } catch (err) { next(err); }
   },
 
+  async getPreview(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const preview = await boardService.getBoardPreview(param(req.params.boardId));
+      sendSuccess(res, preview);
+    } catch (err) { next(err); }
+  },
+
+  async joinBoard(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const board = await boardService.joinBoard(param(req.params.boardId), req.user!.userId);
+      sendSuccess(res, board);
+    } catch (err) { next(err); }
+  },
+
   async createBoard(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const data = createSchema.parse(req.body);
