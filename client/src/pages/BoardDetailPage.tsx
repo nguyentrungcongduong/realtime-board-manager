@@ -843,7 +843,8 @@ function BoardDetailPage() {
   const { data: cards = [] } = useQuery<Card[]>({
     queryKey: ['cards', boardId],
     queryFn: async () => (await cardApi.getAll(boardId!)).data.data,
-    enabled: !!boardId,
+    enabled: !!boardId && !!board,
+    retry: false,
   });
 
   // Delete card list mutation
