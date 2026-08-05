@@ -11,7 +11,8 @@ import { cn } from '@/utils';
 import {
   Plus, Loader2, UserPlus, X, User,
   Eye, AlignLeft, List, Archive, Github,
-  Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle
+  Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle,
+  Trash2
 } from 'lucide-react';
 import avatarImg from '@/images/avata.png';
 
@@ -66,9 +67,10 @@ interface KanbanColumnProps {
   onDrop: (taskId: string, fromCardId: string, toStatus: TaskStatus) => void;
   onAddTask: (cardId: string, status: TaskStatus) => void;
   onTaskClick: (task: Task) => void;
+  onDeleteCard?: (cardId: string) => void;
 }
 
-function KanbanColumn({ column, tasks, cards, onDrop, onAddTask, onTaskClick }: KanbanColumnProps) {
+function KanbanColumn({ column, tasks, cards, onDrop, onAddTask, onTaskClick, onDeleteCard }: KanbanColumnProps) {
   const [{ isOver }, drop] = useDrop({
     accept: DND_TYPE,
     drop: (item: { taskId: string; cardId: string; status: TaskStatus }) => {
@@ -85,14 +87,25 @@ function KanbanColumn({ column, tasks, cards, onDrop, onAddTask, onTaskClick }: 
     <div
       ref={drop as unknown as React.Ref<HTMLDivElement>}
       className={cn(
-        'bg-[#101214] text-slate-300 rounded-xl p-3 min-w-[270px] w-[270px] flex flex-col gap-2 shrink-0 border border-slate-800/80 transition-all',
+        'bg-[#101214] text-slate-300 rounded-xl p-3 min-w-[270px] w-[270px] flex flex-col gap-2 shrink-0 border border-slate-800/80 transition-all group',
         isOver && 'ring-2 ring-blue-500/80 bg-[#161a1d]'
       )}
     >
       {/* Column Header */}
       <div className="flex items-center justify-between px-1 py-0.5">
         <h4 className="font-bold text-xs text-slate-200">{column.label}</h4>
-        <span className="text-[11px] text-slate-500 font-semibold">...</span>
+        <div className="flex items-center gap-1">
+          {defaultCard && onDeleteCard && cards.length > 1 && (
+            <button
+              onClick={() => onDeleteCard(defaultCard.id)}
+              className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-0.5 transition-opacity"
+              title="Delete list"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+          <span className="text-[11px] text-slate-500 font-semibold">...</span>
+        </div>
       </div>
 
       {/* List of Tasks */}
@@ -336,17 +349,19 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
                       <option value="commit">Attach Commit</option>
                       <option value="issue">Attach Issue</option>
                     </select>
+
                     <input
                       value={githubInput}
                       onChange={(e) => setGithubInput(e.target.value)}
                       placeholder={attachType === 'commit' ? 'Commit SHA (e.g. 7f8a3b)' : 'PR/Issue # (e.g. 42)'}
                       className="w-full bg-slate-800 border border-slate-700 p-1.5 rounded text-slate-200 text-xs"
                     />
+
                     <button
                       onClick={handleAttachGithub}
                       className="w-full py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-xs"
                     >
-                      Attach
+                      Attach Item
                     </button>
                   </div>
                 )}
@@ -485,6 +500,11 @@ function BoardDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', boardId] }),
   });
 
+  const deleteCardMutation = useMutation({
+    mutationFn: (cardId: string) => cardApi.delete(boardId!, cardId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', boardId] }),
+  });
+
   useEffect(() => {
     if (cards.length === 0 && !boardLoading && boardId) {
       createDefaultCardMutation.mutate();
@@ -546,6 +566,12 @@ function BoardDetailPage() {
     } catch (err) { console.error(err); }
   }, [boardId, queryClient]);
 
+  const handleDeleteCard = useCallback((cardId: string) => {
+    if (confirm('Are you sure you want to delete this list?')) {
+      deleteCardMutation.mutate(cardId);
+    }
+  }, [deleteCardMutation]);
+
   const filteredTasks = tasks.filter((t) =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -604,6 +630,7 @@ function BoardDetailPage() {
                   onDrop={handleDrop}
                   onAddTask={handleAddTask}
                   onTaskClick={(t) => setSelectedTask(t)}
+                  onDeleteCard={handleDeleteCard}
                 />
               ))}
 
