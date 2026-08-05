@@ -11,7 +11,7 @@ import { cn } from '@/utils';
 import {
   Plus, Loader2, UserPlus, X, User,
   Eye, AlignLeft, List, Archive, Github,
-  Copy, Link as LinkIcon
+  Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle
 } from 'lucide-react';
 import avatarImg from '@/images/avata.png';
 
@@ -43,7 +43,7 @@ function TaskCard({ task, onClick }: TaskCardProps) {
     >
       <p className="line-clamp-2">{task.title}</p>
       {task.githubAttachments.length > 0 && (
-        <div className="flex gap-1 mt-2">
+        <div className="flex gap-1 mt-2 flex-wrap">
           {task.githubAttachments.map((a) => (
             <span key={a.id} className="bg-slate-800 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
               <Github className="w-3 h-3" />
@@ -164,6 +164,13 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
     } catch (err) { console.error(err); }
   };
 
+  const handleRemoveAttachment = async (attachmentId: string) => {
+    try {
+      await taskApi.removeAttachment(task.boardId, task.cardId, task.id, attachmentId);
+      onUpdate();
+    } catch (err) { console.error(err); }
+  };
+
   const handleArchive = async () => {
     try {
       await taskApi.delete(task.boardId, task.cardId, task.id);
@@ -207,6 +214,39 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
             </button>
           </div>
         </div>
+
+        {/* Attached GitHub items list */}
+        {task.githubAttachments.length > 0 && (
+          <div className="space-y-2 text-xs">
+            <p className="text-slate-400 font-bold flex items-center gap-1.5">
+              <Github className="w-4 h-4 text-blue-400" /> GitHub Power-Up Attachments
+            </p>
+            <div className="space-y-1.5">
+              {task.githubAttachments.map((att) => (
+                <div key={att.id} className="p-2 bg-[#1D2125] border border-slate-700 rounded flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {att.type === 'pull_request' && <GitPullRequest className="w-3.5 h-3.5 text-purple-400" />}
+                    {att.type === 'commit' && <GitCommit className="w-3.5 h-3.5 text-blue-400" />}
+                    {att.type === 'issue' && <AlertCircle className="w-3.5 h-3.5 text-amber-400" />}
+                    <span className="font-semibold text-slate-200">
+                      {att.type.toUpperCase()}: #{att.number ?? att.sha?.slice(0, 7)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {att.url && (
+                      <a href={att.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3" /> Open
+                      </a>
+                    )}
+                    <button onClick={() => handleRemoveAttachment(att.id)} className="text-slate-400 hover:text-red-400 p-1">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Two-Column Body matching Figma Image 5 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -299,7 +339,7 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
                     <input
                       value={githubInput}
                       onChange={(e) => setGithubInput(e.target.value)}
-                      placeholder={attachType === 'commit' ? 'Commit SHA' : 'PR/Issue Number'}
+                      placeholder={attachType === 'commit' ? 'Commit SHA (e.g. 7f8a3b)' : 'PR/Issue # (e.g. 42)'}
                       className="w-full bg-slate-800 border border-slate-700 p-1.5 rounded text-slate-200 text-xs"
                     />
                     <button
@@ -422,6 +462,7 @@ function BoardDetailPage() {
   const queryClient = useQueryClient();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [tasks, setTasks] = useState<Task[]>([]);
 
   // Fetch board info
@@ -505,6 +546,10 @@ function BoardDetailPage() {
     } catch (err) { console.error(err); }
   }, [boardId, queryClient]);
 
+  const filteredTasks = tasks.filter((t) =>
+    t.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (boardLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -519,8 +564,19 @@ function BoardDetailPage() {
     <DndProvider backend={HTML5Backend}>
       <div className="-m-6 flex flex-col h-[calc(100vh-3rem)]">
         {/* Magenta / Purple Board Bar matching Figma Image 4 */}
-        <div className="bg-trello-boardbar px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm">
-          <h1 className="font-bold text-sm text-white">{board.name}</h1>
+        <div className="bg-trello-boardbar px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm flex-wrap gap-2">
+          <div className="flex items-center gap-4">
+            <h1 className="font-bold text-sm text-white">{board.name}</h1>
+
+            {/* Real-time Task Search Bar */}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search cards..."
+              className="bg-black/20 text-white placeholder-white/60 px-2.5 py-1 rounded text-xs border border-white/20 focus:outline-none focus:border-white/50 w-40"
+            />
+          </div>
 
           <button
             onClick={() => setShowInviteModal(true)}
@@ -543,7 +599,7 @@ function BoardDetailPage() {
                 <KanbanColumn
                   key={col.id}
                   column={col}
-                  tasks={tasks.filter((t) => t.status === col.id)}
+                  tasks={filteredTasks.filter((t) => t.status === col.id)}
                   cards={cards}
                   onDrop={handleDrop}
                   onAddTask={handleAddTask}
