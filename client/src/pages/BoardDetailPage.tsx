@@ -12,7 +12,7 @@ import {
   Plus, Loader2, UserPlus, X, User,
   Eye, AlignLeft, List, Archive, Github,
   Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle,
-  Trash2, Calendar, Filter
+  Trash2, Calendar, Filter, Flag
 } from 'lucide-react';
 import avatarImg from '@/images/avata.png';
 
@@ -93,12 +93,12 @@ interface KanbanColumnProps {
   tasks: Task[];
   cards: Card[];
   onDrop: (taskId: string, fromCardId: string, toStatus: TaskStatus) => void;
-  onAddTask: (cardId: string, status: TaskStatus) => void;
+  onOpenCreateModal: (cardId: string, status: TaskStatus) => void;
   onTaskClick: (task: Task) => void;
   onDeleteCard?: (cardId: string) => void;
 }
 
-function KanbanColumn({ column, tasks, cards, onDrop, onAddTask, onTaskClick, onDeleteCard }: KanbanColumnProps) {
+function KanbanColumn({ column, tasks, cards, onDrop, onOpenCreateModal, onTaskClick, onDeleteCard }: KanbanColumnProps) {
   const [{ isOver }, drop] = useDrop({
     accept: DND_TYPE,
     drop: (item: { taskId: string; cardId: string; status: TaskStatus }) => {
@@ -146,13 +146,144 @@ function KanbanColumn({ column, tasks, cards, onDrop, onAddTask, onTaskClick, on
       {/* "+ Add a card" Button matching Figma */}
       {defaultCard && (
         <button
-          onClick={() => onAddTask(defaultCard.id, column.id)}
+          onClick={() => onOpenCreateModal(defaultCard.id, column.id)}
           className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-slate-800/60 transition-colors mt-1"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add a card</span>
         </button>
       )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────
+// Create Task Modal with Priority & Deadline Selection
+// ──────────────────────────────────────
+interface CreateTaskModalProps {
+  boardId: string;
+  cardId: string;
+  status: TaskStatus;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+function CreateTaskModal({ boardId, cardId, status, onClose, onCreated }: CreateTaskModalProps) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [deadline, setDeadline] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setLoading(true);
+    try {
+      await taskApi.create(boardId, cardId, {
+        title,
+        description,
+        status,
+        priority,
+        deadline: deadline || undefined,
+      });
+      onCreated();
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-[#282E33] border border-slate-700 text-slate-200 rounded-xl w-full max-w-md p-6 space-y-5 shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <X className="w-4 h-4" />
+        </button>
+
+        <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <Plus className="w-4 h-4 text-blue-400" /> Create New Card
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-slate-400 mb-1 font-semibold">Card Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Design landing page hero"
+              className="w-full bg-[#1D2125] border border-slate-700 px-3 py-2 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-400 mb-1 font-semibold flex items-center gap-1.5">
+              <Flag className="w-3.5 h-3.5 text-amber-400" /> Priority Level
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['low', 'medium', 'high'] as const).map((p) => (
+                <button
+                  type="button"
+                  key={p}
+                  onClick={() => setPriority(p)}
+                  className={cn(
+                    'py-2 px-3 rounded font-bold uppercase tracking-wider border transition-all text-[11px]',
+                    priority === p
+                      ? p === 'high'
+                        ? 'bg-red-950 text-red-300 border-red-600'
+                        : p === 'medium'
+                        ? 'bg-amber-950 text-amber-300 border-amber-600'
+                        : 'bg-slate-700 text-slate-200 border-slate-500'
+                      : 'bg-[#1D2125] border-slate-800 text-slate-400 hover:text-slate-200'
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-400 mb-1 font-semibold flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-blue-400" /> Due Date (Optional)
+            </label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full bg-[#1D2125] border border-slate-700 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-400 mb-1 font-semibold">Description (Optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add details..."
+              className="w-full bg-[#1D2125] border border-slate-700 p-2.5 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none h-16"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
+            <button type="button" onClick={onClose} className="px-3 py-1.5 rounded text-slate-400 hover:text-white">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!title.trim() || loading}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Create Card'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -168,6 +299,7 @@ interface TaskDetailModalProps {
 
 function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
   const [description, setDescription] = useState(task.description || '');
+  const [priority, setPriority] = useState<TaskPriority>(task.priority || 'medium');
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<string[]>([]);
   const [showGithubMenu, setShowGithubMenu] = useState(false);
@@ -178,10 +310,18 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
   const handleSaveDescription = async () => {
     setSaving(true);
     try {
-      await taskApi.update(task.boardId, task.cardId, task.id, { description });
+      await taskApi.update(task.boardId, task.cardId, task.id, { description, priority });
       onUpdate();
     } catch (err) { console.error(err); }
     finally { setSaving(false); }
+  };
+
+  const handlePriorityChange = async (newPriority: TaskPriority) => {
+    setPriority(newPriority);
+    try {
+      await taskApi.update(task.boardId, task.cardId, task.id, { priority: newPriority });
+      onUpdate();
+    } catch (err) { console.error(err); }
   };
 
   const handleAddComment = (e: React.FormEvent) => {
@@ -241,8 +381,28 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
           <p className="text-xs text-slate-400">in list <span className="underline">{task.status}</span></p>
         </div>
 
-        {/* Members & Notifications bar */}
-        <div className="flex gap-6 items-center text-xs">
+        {/* Priority Selector & Members bar */}
+        <div className="flex gap-6 items-center text-xs flex-wrap">
+          <div>
+            <p className="text-slate-400 font-semibold mb-1">Priority</p>
+            <div className="flex items-center gap-1">
+              {(['low', 'medium', 'high'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handlePriorityChange(p)}
+                  className={cn(
+                    'px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-colors',
+                    priority === p
+                      ? p === 'high' ? 'bg-red-950 text-red-300 border-red-600' : p === 'medium' ? 'bg-amber-950 text-amber-300 border-amber-600' : 'bg-slate-700 text-slate-200 border-slate-500'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <p className="text-slate-400 font-semibold mb-1">Members</p>
             <div className="flex items-center gap-1.5">
@@ -536,6 +696,7 @@ function BoardDetailPage() {
   const queryClient = useQueryClient();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [createModalInfo, setCreateModalInfo] = useState<{ cardId: string; status: TaskStatus } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<TaskPriority | 'all'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -620,14 +781,9 @@ function BoardDetailPage() {
     moveTask.mutate({ taskId, cardId: fromCardId, status: toStatus });
   }, [moveTask]);
 
-  const handleAddTask = useCallback(async (cardId: string, status: TaskStatus) => {
-    const title = prompt('Enter card title:');
-    if (!title) return;
-    try {
-      await taskApi.create(boardId!, cardId, { title, status });
-      queryClient.invalidateQueries({ queryKey: ['tasks', boardId] });
-    } catch (err) { console.error(err); }
-  }, [boardId, queryClient]);
+  const handleOpenCreateModal = useCallback((cardId: string, status: TaskStatus) => {
+    setCreateModalInfo({ cardId, status });
+  }, []);
 
   const handleDeleteCard = useCallback((cardId: string) => {
     if (confirm('Are you sure you want to delete this list?')) {
@@ -712,7 +868,7 @@ function BoardDetailPage() {
                   tasks={filteredTasks.filter((t) => t.status === col.id)}
                   cards={cards}
                   onDrop={handleDrop}
-                  onAddTask={handleAddTask}
+                  onOpenCreateModal={handleOpenCreateModal}
                   onTaskClick={(t) => setSelectedTask(t)}
                   onDeleteCard={handleDeleteCard}
                 />
@@ -738,6 +894,16 @@ function BoardDetailPage() {
       </div>
 
       {/* Modals */}
+      {createModalInfo && (
+        <CreateTaskModal
+          boardId={boardId!}
+          cardId={createModalInfo.cardId}
+          status={createModalInfo.status}
+          onClose={() => setCreateModalInfo(null)}
+          onCreated={() => queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })}
+        />
+      )}
+
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
