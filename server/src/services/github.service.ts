@@ -6,7 +6,7 @@ import { env } from '../config/env';
 const getOctokit = async (userId: string): Promise<Octokit> => {
   const user = await userRepository.findById(userId);
   if (!user?.githubToken) {
-    throw new AppError('GitHub account not connected. Please sign in with GitHub.', 401);
+    throw new AppError('GitHub account not connected. Please connect your GitHub account in Account Settings.', 400);
   }
   return new Octokit({ auth: user.githubToken });
 };
