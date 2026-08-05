@@ -70,17 +70,28 @@ function TaskCard({ task, onClick }: TaskCardProps) {
         )}
       </div>
 
-      {/* GitHub Attachments */}
-      {task.githubAttachments.length > 0 && (
-        <div className="flex gap-1 pt-1 flex-wrap">
-          {task.githubAttachments.map((a) => (
-            <span key={a.id} className="bg-slate-800 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
-              <Github className="w-3 h-3" />
-              #{a.number ?? a.sha?.slice(0, 6)}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* GitHub Attachments & Assignee Badge */}
+      <div className="flex items-center justify-between gap-1 pt-1 flex-wrap">
+        {task.githubAttachments.length > 0 ? (
+          <div className="flex gap-1 flex-wrap">
+            {task.githubAttachments.map((a) => (
+              <span key={a.id} className="bg-slate-800 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
+                <Github className="w-3 h-3" />
+                #{a.number ?? a.sha?.slice(0, 6)}
+              </span>
+            ))}
+          </div>
+        ) : <div />}
+
+        {task.assigneeId && (
+          <img
+            src={avatarImg}
+            alt="Assignee"
+            className="w-5 h-5 rounded-full border border-blue-500/80 object-cover shrink-0 ml-auto"
+            title="Assigned member"
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -498,10 +509,29 @@ function TaskDetailModal({ task, listName, boardMembers = [], ownerId, onClose, 
           <div>
             <p className="text-slate-400 font-semibold mb-1">Members</p>
             <div className="flex items-center gap-1.5">
-              <img src={avatarImg} alt="Avatar" className="w-7 h-7 rounded-full object-cover" />
-              <button className="w-7 h-7 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300">
-                <Plus className="w-4 h-4" />
-              </button>
+              {assigneeId ? (
+                <div className="flex items-center gap-1.5 bg-[#1D2125] border border-blue-600/80 px-2 py-1 rounded text-xs text-blue-200 shadow-xs">
+                  <img src={avatarImg} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
+                  <span className="font-semibold text-xs">
+                    {boardMembers.indexOf(assigneeId) === 0 ? 'User 1 (Owner)' : `User ${boardMembers.indexOf(assigneeId) + 1}`}
+                  </span>
+                  <button
+                    onClick={() => handleAssignMember(assigneeId)}
+                    className="text-slate-400 hover:text-red-400 ml-1 transition-colors"
+                    title="Remove member assignment"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowMembersMenu(!showMembersMenu)}
+                  className="w-7 h-7 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300 transition-colors"
+                  title="Assign member"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 

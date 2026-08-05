@@ -3,10 +3,13 @@ node_modules/
 dist/
 build/
 
-# Environment
+# Local Storage & Secrets
 .env
 .env.local
 .env.*.local
+server/data/
+data/
+*.json
 
 # Logs
 *.log

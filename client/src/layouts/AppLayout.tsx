@@ -20,6 +20,7 @@ function AppLayout() {
   const queryClient = useQueryClient();
 
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAllMembersModal, setShowAllMembersModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showGithubExplorer, setShowGithubExplorer] = useState(false);
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
@@ -184,7 +185,7 @@ function AppLayout() {
               </button>
 
               <button
-                onClick={() => setShowProfileModal(true)}
+                onClick={() => setShowAllMembersModal(true)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded text-left font-medium hover:bg-trello-border/20 text-trello-text transition-colors"
               >
                 <Users className="w-4 h-4 text-slate-400" />
@@ -448,6 +449,56 @@ function AppLayout() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace All Members Modal */}
+      {showAllMembersModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#282E33] border border-slate-700 text-slate-200 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setShowAllMembersModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-400" />
+              <h3 className="font-bold text-base text-white">Workspace Members</h3>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Members of your Workspace can view, join, and collaborate across shared boards.
+            </p>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="p-3 bg-[#1D2125] border border-slate-700 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src={avatarImg} alt="Avatar" className="w-8 h-8 rounded-full border border-red-500 object-cover" />
+                  <div>
+                    <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                      {user?.displayName || 'User'}
+                      <span className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-800/80 font-bold">You (Admin)</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400">{user?.email}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded font-semibold border border-emerald-800">
+                  Active
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-700 flex justify-end">
+              <button
+                onClick={() => setShowAllMembersModal(false)}
+                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-semibold text-xs transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
