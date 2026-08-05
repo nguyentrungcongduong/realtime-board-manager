@@ -70,28 +70,28 @@ function LoginPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-white relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Bottom Left Image Illustration pinned to bottom-left corner of full screen */}
+    <div className="fixed inset-0 min-h-screen w-full bg-white flex items-center justify-center p-4 overflow-hidden select-none">
+      {/* Bottom Left Image Illustration — Fixed flush to bottom-left corner */}
       <img
         src={leftIllustration}
         alt="Illustration Left"
-        className="hidden md:block absolute bottom-0 left-0 w-[300px] lg:w-[400px] xl:w-[450px] max-h-[50vh] object-contain object-bottom pointer-events-none select-none z-0"
+        className="fixed bottom-0 left-0 w-[300px] sm:w-[340px] md:w-[380px] lg:w-[430px] pointer-events-none z-0 object-contain object-left-bottom"
       />
 
-      {/* Bottom Right Image Illustration pinned to bottom-right corner of full screen */}
+      {/* Bottom Right Image Illustration — Fixed flush to bottom-right corner */}
       <img
         src={rightIllustration}
         alt="Illustration Right"
-        className="hidden md:block absolute bottom-0 right-0 w-[300px] lg:w-[400px] xl:w-[450px] max-h-[50vh] object-contain object-bottom pointer-events-none select-none z-0"
+        className="fixed bottom-0 right-0 w-[300px] sm:w-[340px] md:w-[380px] lg:w-[430px] pointer-events-none z-0 object-contain object-right-bottom"
       />
 
-      {/* Main Centered Login / Verification Card */}
-      <div className="relative z-10 w-full max-w-[400px] bg-white border border-slate-200 rounded p-8 shadow-xs text-center">
+      {/* Main Centered Login / Verification Card matching Figma Image 1 */}
+      <div className="relative z-10 w-full max-w-[400px] bg-white border border-slate-200 rounded-sm p-8 shadow-sm text-center">
         {step === 'email' ? (
           <>
             {/* Logo */}
-            <div className="flex justify-center mb-3">
-              <SkipliLogo className="w-9 h-9" />
+            <div className="flex justify-center mb-4">
+              <SkipliLogo className="w-10 h-10" />
             </div>
 
             <p className="text-xs font-semibold text-slate-500 mb-6">Log in to continue</p>
@@ -108,7 +108,7 @@ function LoginPage() {
                   {...emailForm.register('email')}
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800 placeholder-slate-400"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-sm text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800 placeholder-slate-400"
                   disabled={loading}
                 />
                 {emailForm.formState.errors.email && (
@@ -119,7 +119,7 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[#0052CC] hover:bg-[#0065FF] text-white font-semibold text-sm rounded-sm transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
               </button>
@@ -142,7 +142,7 @@ function LoginPage() {
                   {...codeForm.register('code')}
                   type="text"
                   placeholder="Enter code verification"
-                  className="w-full px-3 py-2 border border-slate-300 rounded text-sm text-center tracking-widest font-mono focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800 placeholder-slate-400"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-sm text-sm text-center tracking-widest font-mono focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800 placeholder-slate-400"
                   disabled={loading}
                   autoFocus
                 />
@@ -154,7 +154,7 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[#0052CC] hover:bg-[#0065FF] text-white font-semibold text-sm rounded-sm transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
               </button>
@@ -170,7 +170,7 @@ function LoginPage() {
           </>
         )}
 
-        {/* Footer */}
+        {/* Footer Notice */}
         <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-1">
           <p className="hover:underline cursor-pointer">Privacy Policy</p>
           <p className="leading-tight px-3">
