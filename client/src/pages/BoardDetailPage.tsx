@@ -13,6 +13,7 @@ import {
   Eye, AlignLeft, List, Archive, Github,
   Copy, Link as LinkIcon
 } from 'lucide-react';
+import avatarImg from '@/images/avata.png';
 
 const DND_TYPE = 'TASK';
 
@@ -192,9 +193,7 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
           <div>
             <p className="text-slate-400 font-semibold mb-1">Members</p>
             <div className="flex items-center gap-1.5">
-              <div className="w-7 h-7 rounded-full bg-skipli-red text-white font-bold text-xs flex items-center justify-center">
-                SD
-              </div>
+              <img src={avatarImg} alt="Avatar" className="w-7 h-7 rounded-full object-cover" />
               <button className="w-7 h-7 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300">
                 <Plus className="w-4 h-4" />
               </button>
@@ -247,9 +246,7 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
               </div>
 
               <form onSubmit={handleAddComment} className="flex gap-2.5 items-start">
-                <div className="w-7 h-7 rounded-full bg-skipli-red text-white font-bold text-xs flex items-center justify-center shrink-0">
-                  SD
-                </div>
+                <img src={avatarImg} alt="Avatar" className="w-7 h-7 rounded-full object-cover shrink-0" />
                 <input
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
@@ -260,9 +257,7 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
 
               {comments.map((c, i) => (
                 <div key={i} className="flex gap-2.5 items-start pl-1">
-                  <div className="w-6 h-6 rounded-full bg-skipli-red text-white font-bold text-[10px] flex items-center justify-center shrink-0">
-                    SD
-                  </div>
+                  <img src={avatarImg} alt="Avatar" className="w-6 h-6 rounded-full object-cover shrink-0" />
                   <div className="bg-[#1D2125] border border-slate-700/80 p-2 rounded text-slate-300">
                     {c}
                   </div>

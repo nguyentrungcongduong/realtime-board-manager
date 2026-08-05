@@ -7,6 +7,8 @@ import { Loader2 } from 'lucide-react';
 import { authApi } from '@/services/auth.service';
 import { useAuthStore } from '@/store/auth.store';
 import { SkipliLogo } from '@/components/SkipliLogo';
+import leftIllustration from '@/images/image.png';
+import rightIllustration from '@/images/image1.png';
 
 type Step = 'email' | 'code';
 
@@ -47,7 +49,6 @@ function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      // Try signin first, if user doesn't exist try signup then signin
       try {
         const res = await authApi.signIn(email, data.code);
         const { accessToken, user } = res.data.data;
@@ -70,36 +71,25 @@ function LoginPage() {
 
   return (
     <div className="relative min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden">
-      {/* Bottom Left Illustration */}
-      <div className="hidden md:block absolute bottom-0 left-0 w-96 h-72 opacity-90 pointer-events-none">
-        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-          <path d="M0 220 L150 140 L300 220 L150 300 Z" fill="#00C2FF" opacity="0.3" />
-          <path d="M20 230 L150 160 L280 230 L150 300 Z" fill="#0052CC" opacity="0.6" />
-          <rect x="120" y="80" width="80" height="110" rx="4" fill="#E6F0FF" stroke="#0052CC" strokeWidth="3" />
-          <line x1="135" y1="100" x2="185" y2="100" stroke="#0052CC" strokeWidth="4" strokeLinecap="round" />
-          <line x1="135" y1="120" x2="175" y2="120" stroke="#00C2FF" strokeWidth="4" strokeLinecap="round" />
-          <circle cx="60" cy="180" r="10" fill="#EA3829" />
-          <path d="M60 190 L60 220 M45 200 L75 200" stroke="#EA3829" strokeWidth="3" />
-        </svg>
-      </div>
+      {/* Bottom Left Image Illustration */}
+      <img
+        src={leftIllustration}
+        alt="Illustration Left"
+        className="hidden md:block absolute bottom-0 left-0 w-80 lg:w-[360px] pointer-events-none object-contain select-none"
+      />
 
-      {/* Bottom Right Illustration */}
-      <div className="hidden md:block absolute bottom-0 right-0 w-96 h-72 opacity-90 pointer-events-none">
-        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-          <path d="M100 220 L250 140 L400 220 L250 300 Z" fill="#00C2FF" opacity="0.3" />
-          <rect x="230" y="60" width="100" height="130" rx="6" fill="#FFFFFF" stroke="#0052CC" strokeWidth="3" />
-          <circle cx="280" cy="110" r="18" fill="#0052CC" opacity="0.2" />
-          <path d="M260 150 L300 150" stroke="#0052CC" strokeWidth="4" strokeLinecap="round" />
-          <circle cx="350" cy="120" r="22" stroke="#0052CC" strokeWidth="4" fill="none" />
-          <line x1="335" y1="135" x2="315" y2="155" stroke="#0052CC" strokeWidth="5" strokeLinecap="round" />
-        </svg>
-      </div>
+      {/* Bottom Right Image Illustration */}
+      <img
+        src={rightIllustration}
+        alt="Illustration Right"
+        className="hidden md:block absolute bottom-0 right-0 w-80 lg:w-[360px] pointer-events-none object-contain select-none"
+      />
 
-      {/* Main Login/Verification Card */}
-      <div className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded-sm p-8 shadow-sm text-center">
+      {/* Main Card */}
+      <div className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded p-8 shadow-xs text-center">
         {step === 'email' ? (
           <>
-            {/* Logo */}
+            {/* Skipli Red S Logo */}
             <div className="flex justify-center mb-4">
               <SkipliLogo className="w-10 h-10" />
             </div>
@@ -180,7 +170,7 @@ function LoginPage() {
           </>
         )}
 
-        {/* Footer Privacy Notice */}
+        {/* Footer */}
         <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-1">
           <p className="hover:underline cursor-pointer">Privacy Policy</p>
           <p className="leading-tight px-4">

@@ -3,9 +3,10 @@ import { useAuthStore } from '@/store/auth.store';
 import { disconnectSocket } from '@/socket/socket';
 import { SkipliLogo } from '@/components/SkipliLogo';
 import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut } from 'lucide-react';
-import { cn, getInitials } from '@/utils';
+import { cn } from '@/utils';
 import { useQuery } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
+import avatarImg from '@/images/avata.png';
 
 function AppLayout() {
   const { user, logout } = useAuthStore();
@@ -27,7 +28,6 @@ function AppLayout() {
   };
 
   const isBoardDetail = location.pathname.startsWith('/boards/') && boardId;
-  const userInitials = user?.displayName ? getInitials(user.displayName) : 'SD';
 
   return (
     <div className="min-h-screen bg-trello-workspace text-trello-text flex flex-col font-sans">
@@ -46,19 +46,19 @@ function AppLayout() {
           </div>
         </div>
 
-        {/* Right: Rocket Icon + Red Avatar Circle */}
+        {/* Right: Rocket Icon + Avatar Image */}
         <div className="flex items-center gap-3">
           <button className="text-slate-400 hover:text-white transition-colors" title="Quick actions">
             <Rocket className="w-4 h-4" />
           </button>
 
-          {/* Red SD Avatar Circle */}
+          {/* Avatar image matching Figma SD circle */}
           <div
             onClick={handleLogout}
-            className="w-7 h-7 rounded-full bg-skipli-red flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:opacity-90 transition-opacity"
+            className="w-7 h-7 rounded-full overflow-hidden border border-red-500 cursor-pointer hover:opacity-90 transition-opacity"
             title={`Logged in as ${user?.displayName || user?.email} (Click to logout)`}
           >
-            {userInitials}
+            <img src={avatarImg} alt="Avatar" className="w-full h-full object-cover" />
           </div>
         </div>
       </header>
@@ -113,9 +113,7 @@ function AppLayout() {
                 <div className="space-y-2.5 pl-2">
                   {currentBoard?.members.map((memberId, idx) => (
                     <div key={memberId} className="flex items-center gap-2 text-xs text-slate-300">
-                      <div className="w-5 h-5 rounded-full bg-skipli-red text-white font-bold text-[10px] flex items-center justify-center">
-                        SD
-                      </div>
+                      <img src={avatarImg} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
                       <span>{idx === 0 ? 'User 1 (Owner)' : `User ${idx + 1}`}</span>
                     </div>
                   ))}
