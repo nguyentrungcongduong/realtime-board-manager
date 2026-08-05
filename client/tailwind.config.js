@@ -29,6 +29,12 @@ export default {
       fontFamily: {
         sans: ['"Inter"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
+      boxShadow: {
+        soft: '0 4px 20px -2px rgba(0, 0, 0, 0.08)',
+        hover: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+        button: '0 4px 14px 0 rgba(0, 82, 204, 0.3)',
+        glow: '0 0 20px rgba(0, 82, 204, 0.5)',
+      },
       borderRadius: {
         lg: '8px',
         xl: '12px',
