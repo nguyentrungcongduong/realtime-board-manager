@@ -57,13 +57,17 @@ export const userRepository = {
   },
 
   async update(id: string, data: Partial<User>): Promise<void> {
-    const existing = memoryUsers.get(id);
-    if (existing) {
-      memoryUsers.set(id, { ...existing, ...data });
-      persistUsers();
-    }
+    const existing = memoryUsers.get(id) || {
+      id,
+      email: `${id}@local.dev`,
+      displayName: 'User',
+      avatar: 'https://api.dicebear.com/8.x/initials/svg?seed=User',
+      createdAt: new Date().toISOString() as any,
+    };
+    memoryUsers.set(id, { ...existing, ...data });
+    persistUsers();
     try {
-      await db.collection(COLLECTION).doc(id).update(data);
+      await db.collection(COLLECTION).doc(id).set(memoryUsers.get(id)!, { merge: true });
     } catch {
       // Dev fallback
     }

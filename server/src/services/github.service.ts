@@ -2,13 +2,23 @@ import { Octokit } from '@octokit/rest';
 import { userRepository } from '../repositories/user.repository';
 import { AppError } from '../middleware/error.middleware';
 import { env } from '../config/env';
+import { loadStore } from '../utils/fileStore';
+import { User } from '../models';
 
 const getOctokit = async (userId: string): Promise<Octokit> => {
-  const user = await userRepository.findById(userId);
-  if (!user?.githubToken) {
+  let user = await userRepository.findById(userId);
+  let token = user?.githubToken;
+
+  if (!token) {
+    const allUsers = loadStore<Record<string, User>>('users.json', {});
+    const found = Object.values(allUsers).find((u) => !!u.githubToken);
+    token = found?.githubToken;
+  }
+
+  if (!token) {
     throw new AppError('GitHub account not connected. Please connect your GitHub account in Account Settings.', 400);
   }
-  return new Octokit({ auth: user.githubToken });
+  return new Octokit({ auth: token });
 };
 
 export const githubService = {
@@ -47,11 +57,13 @@ export const githubService = {
     const octokit = new Octokit({ auth: data.access_token });
     const { data: githubUser } = await octokit.users.getAuthenticated();
 
-    await userRepository.update(userId, {
-      githubToken: data.access_token,
-      githubUsername: githubUser.login,
-      avatar: githubUser.avatar_url,
-    });
+    if (userId) {
+      await userRepository.update(userId, {
+        githubToken: data.access_token,
+        githubUsername: githubUser.login,
+        avatar: githubUser.avatar_url,
+      });
+    }
   },
 
   async getRepositories(userId: string) {
