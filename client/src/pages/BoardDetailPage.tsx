@@ -12,7 +12,7 @@ import {
   Plus, Loader2, UserPlus, X, User,
   Eye, AlignLeft, List, Archive, Github,
   Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle,
-  Trash2, Calendar, Filter, Flag
+  Trash2, Calendar, Filter, Flag, FolderPlus
 } from 'lucide-react';
 import avatarImg from '@/images/avata.png';
 
@@ -153,6 +153,89 @@ function KanbanColumn({ column, tasks, cards, onDrop, onOpenCreateModal, onTaskC
           <span>Add a card</span>
         </button>
       )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────
+// Create List (Card container) Modal
+// ──────────────────────────────────────
+interface CreateListModalProps {
+  boardId: string;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+function CreateListModal({ boardId, onClose, onCreated }: CreateListModalProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setLoading(true);
+    try {
+      await cardApi.create(boardId, { name, description });
+      onCreated();
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-[#282E33] border border-slate-700 text-slate-200 rounded-xl w-full max-w-sm p-6 space-y-4 shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <X className="w-4 h-4" />
+        </button>
+
+        <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <FolderPlus className="w-4 h-4 text-purple-400" /> Add Another List
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-slate-400 mb-1 font-semibold">List Title *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Backlog / In Review"
+              className="w-full bg-[#1D2125] border border-slate-700 px-3 py-2 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-400 mb-1 font-semibold">Description (Optional)</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="List category..."
+              className="w-full bg-[#1D2125] border border-slate-700 px-3 py-2 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
+            <button type="button" onClick={onClose} className="px-3 py-1.5 rounded text-slate-400 hover:text-white">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim() || loading}
+              className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add List'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -696,6 +779,7 @@ function BoardDetailPage() {
   const queryClient = useQueryClient();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showCreateListModal, setShowCreateListModal] = useState(false);
   const [createModalInfo, setCreateModalInfo] = useState<{ cardId: string; status: TaskStatus } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<TaskPriority | 'all'>('all');
@@ -876,17 +960,10 @@ function BoardDetailPage() {
 
               {/* "+ Add another list" Button matching Figma Image 4 */}
               <button
-                onClick={() => {
-                  const cardName = prompt('Enter list name:');
-                  if (cardName) {
-                    cardApi.create(boardId!, { name: cardName, description: '' }).then(() => {
-                      queryClient.invalidateQueries({ queryKey: ['cards', boardId] });
-                    });
-                  }
-                }}
-                className="bg-trello-boardbar/80 hover:bg-trello-boardbar text-white px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-colors"
+                onClick={() => setShowCreateListModal(true)}
+                className="bg-trello-boardbar/80 hover:bg-trello-boardbar text-white px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5"
               >
-                + Add another list
+                <Plus className="w-4 h-4" /> Add another list
               </button>
             </>
           )}
@@ -894,6 +971,14 @@ function BoardDetailPage() {
       </div>
 
       {/* Modals */}
+      {showCreateListModal && (
+        <CreateListModal
+          boardId={boardId!}
+          onClose={() => setShowCreateListModal(false)}
+          onCreated={() => queryClient.invalidateQueries({ queryKey: ['cards', boardId] })}
+        />
+      )}
+
       {createModalInfo && (
         <CreateTaskModal
           boardId={boardId!}
