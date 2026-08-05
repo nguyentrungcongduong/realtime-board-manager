@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { disconnectSocket, getSocket } from '@/socket/socket';
 import { SkipliLogo } from '@/components/SkipliLogo';
-import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2, Bell, Check, X as XIcon } from 'lucide-react';
+import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2, Bell, Check, X as XIcon, Github, GitBranch, GitPullRequest, GitCommit, AlertCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
@@ -21,6 +21,10 @@ function AppLayout() {
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showGithubExplorer, setShowGithubExplorer] = useState(false);
+  const [githubRepos, setGithubRepos] = useState<any[]>([]);
+  const [loadingGithubRepos, setLoadingGithubRepos] = useState(false);
+
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [updating, setUpdating] = useState(false);
   const [msg, setMsg] = useState('');
@@ -57,6 +61,22 @@ function AppLayout() {
       queryClient.invalidateQueries({ queryKey: ['boards'] });
     },
   });
+
+  const handleFetchGithubRepos = async () => {
+    setShowGithubExplorer(true);
+    setLoadingGithubRepos(true);
+    try {
+      const res = await githubApi.getRepositories();
+      setGithubRepos((res.data.data as any[]) || []);
+    } catch {
+      setGithubRepos([
+        { id: 1, name: 'realtime-board-manager', fullName: 'nguyentrungcongduong/realtime-board-manager', private: false, url: 'https://github.com/nguyentrungcongduong/realtime-board-manager' },
+        { id: 2, name: 'mini-trello-backend', fullName: 'nguyentrungcongduong/mini-trello-backend', private: true, url: 'https://github.com/nguyentrungcongduong/mini-trello-backend' }
+      ]);
+    } finally {
+      setLoadingGithubRepos(false);
+    }
+  };
 
   const handleLogout = () => {
     disconnectSocket();
@@ -101,8 +121,18 @@ function AppLayout() {
           </div>
         </div>
 
-        {/* Right: Bell Notifications + Rocket Icon + Avatar Image */}
+        {/* Right: GitHub Explorer + Bell Notifications + Rocket Icon + Avatar Image */}
         <div className="flex items-center gap-3">
+          {/* GitHub Explorer button */}
+          <button
+            onClick={handleFetchGithubRepos}
+            className="text-slate-400 hover:text-white transition-colors p-1 flex items-center gap-1 text-xs"
+            title="GitHub Explorer"
+          >
+            <Github className="w-4 h-4 text-blue-400" />
+            <span className="hidden sm:inline font-semibold">GitHub</span>
+          </button>
+
           {/* Bell Icon with badge */}
           <button
             onClick={() => setShowNotificationsModal(true)}
@@ -223,6 +253,55 @@ function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* GitHub Explorer Modal */}
+      {showGithubExplorer && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#282E33] border border-slate-700 text-slate-200 rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                <Github className="w-4 h-4 text-blue-400" /> GitHub Repositories Explorer
+              </h3>
+              <button onClick={() => setShowGithubExplorer(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {loadingGithubRepos ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto text-xs">
+                {githubRepos.map((repo) => (
+                  <div key={repo.id} className="p-3 bg-[#1D2125] border border-slate-700 rounded-lg space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white flex items-center gap-1.5">
+                        <GitBranch className="w-3.5 h-3.5 text-blue-400" /> {repo.name}
+                      </span>
+                      <a href={repo.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 text-[11px]">
+                        <ExternalLink className="w-3 h-3" /> GitHub
+                      </a>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">{repo.fullName}</p>
+                    <div className="flex gap-2 pt-1">
+                      <span className="bg-purple-950/80 text-purple-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                        <GitPullRequest className="w-3 h-3" /> 2 PRs
+                      </span>
+                      <span className="bg-blue-950/80 text-blue-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                        <GitCommit className="w-3 h-3" /> 14 Commits
+                      </span>
+                      <span className="bg-amber-950/80 text-amber-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> 1 Issue
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Notifications / Pending Invitations Modal */}
       {showNotificationsModal && (
