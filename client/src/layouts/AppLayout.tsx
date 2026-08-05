@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
 import { authApi } from '@/services/auth.service';
 import { invitationApi, githubApi } from '@/services/invitation.service';
-import { Invitation } from '@/types';
+import { Invitation, Board } from '@/types';
 import avatarImg from '@/images/avata.png';
 
 function AppLayout() {
@@ -38,6 +38,12 @@ function AppLayout() {
   const { data: invitations = [], refetch: refetchInvitations } = useQuery<Invitation[]>({
     queryKey: ['invitations'],
     queryFn: async () => (await invitationApi.getMyInvitations()).data.data,
+  });
+
+  // Fetch user boards for fallback
+  const { data: userBoards = [] } = useQuery<Board[]>({
+    queryKey: ['boards'],
+    queryFn: async () => (await boardApi.getAll()).data.data,
   });
 
   // Fetch current board if in board detail view
@@ -485,7 +491,7 @@ function AppLayout() {
                 setInviteLoading(true);
                 setInviteMsg('');
                 try {
-                  const targetBoardId = boardId || 'board_default';
+                  const targetBoardId = boardId || (userBoards.length > 0 ? userBoards[0].id : 'board_default');
                   await invitationApi.invite(targetBoardId, inviteEmail);
                   setInviteMsg(`Invitation sent to ${inviteEmail}!`);
                   setInviteEmail('');

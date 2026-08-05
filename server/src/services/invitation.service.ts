@@ -12,10 +12,26 @@ export const createInvitationService = (io?: SocketServer) => ({
     ownerId: string,
     memberEmail: string
   ): Promise<Invitation> {
-    const board = await boardRepository.findById(boardId);
-    if (!board) throw new AppError('Board not found', 404);
-    if (board.ownerId !== ownerId) {
-      throw new AppError('Only the board owner can invite members', 403);
+    let board = await boardRepository.findById(boardId);
+
+    if (!board) {
+      const userBoards = await boardRepository.findByUserId(ownerId);
+      if (userBoards.length > 0) {
+        board = userBoards[0];
+        boardId = board.id;
+      } else {
+        board = await boardRepository.create({
+          name: 'My Workspace',
+          description: 'Default Workspace Board',
+          ownerId,
+          members: [ownerId],
+        });
+        boardId = board.id;
+      }
+    }
+
+    if (board.ownerId !== ownerId && !board.members.includes(ownerId)) {
+      throw new AppError('Only board members can invite others', 403);
     }
 
     const member = await userRepository.findByEmail(memberEmail);
