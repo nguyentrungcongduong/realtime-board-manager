@@ -9,7 +9,7 @@ import { joinBoard, leaveBoard, getSocket } from '@/socket/socket';
 import { Task, Card, TaskStatus, Board, TaskPriority } from '@/types';
 import { cn, formatDate, isOverdue } from '@/utils';
 import {
-  Plus, Loader2, UserPlus, X, User,
+  Plus, Loader2, UserPlus, X, User, Check,
   Eye, AlignLeft, List, Archive, Github,
   Copy, Link as LinkIcon, ExternalLink, GitPullRequest, GitCommit, AlertCircle,
   Trash2, Calendar, Filter, Flag, FolderPlus
@@ -370,19 +370,32 @@ function CreateTaskModal({ boardId, cardId, status, onClose, onCreated }: Create
 interface TaskDetailModalProps {
   task: Task;
   listName?: string;
+  boardMembers?: string[];
+  ownerId?: string;
   onClose: () => void;
   onUpdate: () => void;
 }
 
-function TaskDetailModal({ task, listName, onClose, onUpdate }: TaskDetailModalProps) {
+function TaskDetailModal({ task, listName, boardMembers = [], ownerId, onClose, onUpdate }: TaskDetailModalProps) {
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState<TaskPriority>(task.priority || 'medium');
+  const [assigneeId, setAssigneeId] = useState<string | null>(task.assigneeId || null);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<string[]>([]);
   const [showGithubMenu, setShowGithubMenu] = useState(false);
+  const [showMembersMenu, setShowMembersMenu] = useState(false);
   const [githubInput, setGithubInput] = useState('');
   const [attachType, setAttachType] = useState<'pull_request' | 'commit' | 'issue'>('pull_request');
   const [saving, setSaving] = useState(false);
+
+  const handleAssignMember = async (memberId: string) => {
+    const newAssignee = assigneeId === memberId ? null : memberId;
+    setAssigneeId(newAssignee);
+    try {
+      await taskApi.update(task.boardId, task.cardId, task.id, { assigneeId: newAssignee });
+      onUpdate();
+    } catch (err) { console.error(err); }
+  };
 
   const handleSaveDescription = async () => {
     setSaving(true);
@@ -593,11 +606,45 @@ function TaskDetailModal({ task, listName, onClose, onUpdate }: TaskDetailModalP
 
           {/* Right Sidebar Actions (1 Col) matching Figma */}
           <div className="space-y-4 text-xs">
-            <div>
+            <div className="relative">
               <p className="text-slate-400 font-bold mb-2">Add to card</p>
-              <button className="w-full bg-[#353D45] hover:bg-slate-600 text-slate-200 px-3 py-2 rounded flex items-center gap-2 font-semibold transition-colors mb-2">
+              <button
+                onClick={() => setShowMembersMenu(!showMembersMenu)}
+                className="w-full bg-[#353D45] hover:bg-slate-600 text-slate-200 px-3 py-2 rounded flex items-center gap-2 font-semibold transition-colors mb-2"
+              >
                 <User className="w-3.5 h-3.5" /> Members
               </button>
+
+              {showMembersMenu && (
+                <div className="mt-1 p-3 bg-[#1D2125] border border-slate-700 rounded-lg space-y-2 relative z-20 shadow-xl">
+                  <p className="text-[11px] text-slate-400 font-semibold border-b border-slate-700 pb-1.5">Assign Board Members</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {boardMembers.map((memberId, idx) => {
+                      const isOwner = memberId === ownerId;
+                      const isAssigned = assigneeId === memberId;
+                      const memberLabel = isOwner ? `User 1 (Owner)` : `User ${idx + 1}`;
+
+                      return (
+                        <button
+                          key={memberId}
+                          type="button"
+                          onClick={() => handleAssignMember(memberId)}
+                          className={cn(
+                            'w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition-colors',
+                            isAssigned ? 'bg-blue-900/60 text-blue-200 border border-blue-700 font-bold' : 'hover:bg-slate-800 text-slate-300'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <img src={avatarImg} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
+                            <span>{memberLabel}</span>
+                          </div>
+                          {isAssigned && <Check className="w-4 h-4 text-blue-400" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -1019,6 +1066,8 @@ function BoardDetailPage() {
         <TaskDetailModal
           task={selectedTask}
           listName={cards.find((c) => c.id === selectedTask.cardId)?.name}
+          boardMembers={board?.members}
+          ownerId={board?.ownerId}
           onClose={() => setSelectedTask(null)}
           onUpdate={() => queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })}
         />
