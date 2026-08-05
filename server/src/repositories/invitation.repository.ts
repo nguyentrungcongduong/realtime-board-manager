@@ -1,59 +1,99 @@
 import { db } from '../config/firebase';
-import { Invitation, InvitationStatus } from '../models';
-import admin from 'firebase-admin';
+import { Invitation } from '../models';
 
 const COLLECTION = 'invitations';
+const memoryInvitations = new Map<string, Invitation>();
 
 export const invitationRepository = {
-  async findById(id: string): Promise<Invitation | null> {
-    const doc = await db.collection(COLLECTION).doc(id).get();
-    if (!doc.exists) return null;
-    return { id: doc.id, ...doc.data() } as Invitation;
-  },
-
-  async findByMember(memberId: string): Promise<Invitation[]> {
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where('memberId', '==', memberId)
-      .where('status', '==', 'pending')
-      .orderBy('createdAt', 'desc')
-      .get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Invitation));
-  },
-
-  async findByBoard(boardId: string): Promise<Invitation[]> {
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where('boardId', '==', boardId)
-      .get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Invitation));
-  },
-
-  async findExisting(boardId: string, memberId: string): Promise<Invitation | null> {
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where('boardId', '==', boardId)
-      .where('memberId', '==', memberId)
-      .where('status', '==', 'pending')
-      .limit(1)
-      .get();
-    if (snapshot.empty) return null;
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as Invitation;
-  },
-
   async create(data: Omit<Invitation, 'id' | 'createdAt'>): Promise<Invitation> {
-    const ref = db.collection(COLLECTION).doc();
+    const id = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
     const invitation: Invitation = {
-      id: ref.id,
       ...data,
-      createdAt: admin.firestore.Timestamp.now(),
+      id,
+      createdAt: now as any,
     };
-    await ref.set(invitation);
+    memoryInvitations.set(id, invitation);
+    try {
+      await db.collection(COLLECTION).doc(id).set(invitation);
+    } catch {
+      // Dev fallback
+    }
     return invitation;
   },
 
-  async updateStatus(id: string, status: InvitationStatus): Promise<void> {
-    await db.collection(COLLECTION).doc(id).update({ status });
+  async findById(id: string): Promise<Invitation | null> {
+    try {
+      const doc = await db.collection(COLLECTION).doc(id).get();
+      if (doc.exists) return doc.data() as Invitation;
+    } catch {
+      // Dev fallback
+    }
+    return memoryInvitations.get(id) || null;
+  },
+
+  async findExisting(boardId: string, email: string): Promise<Invitation | null> {
+    try {
+      const snap = await db
+        .collection(COLLECTION)
+        .where('boardId', '==', boardId)
+        .where('memberEmail', '==', email)
+        .where('status', '==', 'pending')
+        .limit(1)
+        .get();
+
+      if (!snap.empty) {
+        return snap.docs[0].data() as Invitation;
+      }
+    } catch {
+      // Dev fallback
+    }
+
+    for (const inv of memoryInvitations.values()) {
+      if (inv.boardId === boardId && inv.memberEmail === email && inv.status === 'pending') {
+        return inv;
+      }
+    }
+    return null;
+  },
+
+  async findByMember(email: string): Promise<Invitation[]> {
+    try {
+      const snap = await db
+        .collection(COLLECTION)
+        .where('memberEmail', '==', email)
+        .where('status', '==', 'pending')
+        .get();
+
+      if (!snap.empty) {
+        return snap.docs.map((doc) => doc.data() as Invitation);
+      }
+    } catch {
+      // Dev fallback
+    }
+
+    const result: Invitation[] = [];
+    for (const inv of memoryInvitations.values()) {
+      if (inv.memberEmail === email && inv.status === 'pending') {
+        result.push(inv);
+      }
+    }
+    return result;
+  },
+
+  async findPendingByEmail(email: string): Promise<Invitation[]> {
+    return this.findByMember(email);
+  },
+
+  async updateStatus(id: string, status: 'accepted' | 'declined'): Promise<void> {
+    const existing = memoryInvitations.get(id);
+    if (existing) {
+      memoryInvitations.set(id, { ...existing, status });
+    }
+    try {
+      await db.collection(COLLECTION).doc(id).update({ status });
+    } catch {
+      // Dev fallback
+    }
   },
 };

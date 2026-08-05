@@ -18,7 +18,7 @@ export const cardService = {
     if (!board) throw new AppError('Board not found', 404);
     if (!board.members.includes(userId)) throw new AppError('Access denied', 403);
 
-    const card = await cardRepository.findById(cardId);
+    const card = await cardRepository.findById(boardId, cardId);
     if (!card || card.boardId !== boardId) throw new AppError('Card not found', 404);
     return card;
   },
@@ -50,10 +50,11 @@ export const cardService = {
     if (!board) throw new AppError('Board not found', 404);
     if (!board.members.includes(userId)) throw new AppError('Access denied', 403);
 
-    const card = await cardRepository.findById(cardId);
+    const card = await cardRepository.findById(boardId, cardId);
     if (!card || card.boardId !== boardId) throw new AppError('Card not found', 404);
 
-    const updated = await cardRepository.update(cardId, data);
+    await cardRepository.update(boardId, cardId, data);
+    const updated = await cardRepository.findById(boardId, cardId);
     return updated!;
   },
 
@@ -64,9 +65,9 @@ export const cardService = {
       throw new AppError('Only the board owner can delete cards', 403);
     }
 
-    const card = await cardRepository.findById(cardId);
+    const card = await cardRepository.findById(boardId, cardId);
     if (!card || card.boardId !== boardId) throw new AppError('Card not found', 404);
 
-    await cardRepository.delete(cardId);
+    await cardRepository.delete(boardId, cardId);
   },
 };

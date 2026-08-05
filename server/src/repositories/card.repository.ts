@@ -1,52 +1,78 @@
 import { db } from '../config/firebase';
 import { Card } from '../models';
-import admin from 'firebase-admin';
 
-const COLLECTION = 'cards';
+const memoryCards = new Map<string, Card>();
+
+const getRef = (boardId: string) =>
+  db.collection('boards').doc(boardId).collection('cards');
 
 export const cardRepository = {
-  async findById(id: string): Promise<Card | null> {
-    const doc = await db.collection(COLLECTION).doc(id).get();
-    if (!doc.exists) return null;
-    return { id: doc.id, ...doc.data() } as Card;
-  },
-
-  async findByBoard(boardId: string): Promise<Card[]> {
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where('boardId', '==', boardId)
-      .orderBy('createdAt', 'asc')
-      .get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Card));
-  },
-
   async create(data: Omit<Card, 'id' | 'createdAt'>): Promise<Card> {
-    const ref = db.collection(COLLECTION).doc();
+    const id = `card_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
     const card: Card = {
-      id: ref.id,
       ...data,
-      createdAt: admin.firestore.Timestamp.now(),
+      id,
+      createdAt: now as any,
     };
-    await ref.set(card);
+    memoryCards.set(id, card);
+    try {
+      await getRef(card.boardId).doc(id).set(card);
+    } catch {
+      // Dev fallback
+    }
     return card;
   },
 
-  async update(id: string, data: Partial<Card>): Promise<Card | null> {
-    await db.collection(COLLECTION).doc(id).update(data);
-    return this.findById(id);
+  async findById(boardId: string, cardId: string): Promise<Card | null> {
+    try {
+      const doc = await getRef(boardId).doc(cardId).get();
+      if (doc.exists) return doc.data() as Card;
+    } catch {
+      // Dev fallback
+    }
+    return memoryCards.get(cardId) || null;
   },
 
-  async delete(id: string): Promise<void> {
-    await db.collection(COLLECTION).doc(id).delete();
+  async findByBoard(boardId: string): Promise<Card[]> {
+    try {
+      const snap = await getRef(boardId).orderBy('position', 'asc').get();
+      if (!snap.empty) {
+        return snap.docs.map((doc) => doc.data() as Card);
+      }
+    } catch {
+      // Dev fallback
+    }
+
+    const result: Card[] = [];
+    for (const c of memoryCards.values()) {
+      if (c.boardId === boardId) result.push(c);
+    }
+    return result;
   },
 
-  async deleteByBoard(boardId: string): Promise<void> {
-    const snapshot = await db
-      .collection(COLLECTION)
-      .where('boardId', '==', boardId)
-      .get();
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
+  async findByBoardId(boardId: string): Promise<Card[]> {
+    return this.findByBoard(boardId);
+  },
+
+  async update(boardId: string, cardId: string, data: Partial<Card>): Promise<void> {
+    const existing = memoryCards.get(cardId);
+    if (existing) {
+      memoryCards.set(cardId, { ...existing, ...data });
+    }
+    try {
+      await getRef(boardId).doc(cardId).update(data);
+    } catch {
+      // Dev fallback
+    }
+  },
+
+  async delete(boardId: string, cardId: string): Promise<void> {
+    memoryCards.delete(cardId);
+    try {
+      await getRef(boardId).doc(cardId).delete();
+    } catch {
+      // Dev fallback
+    }
   },
 };

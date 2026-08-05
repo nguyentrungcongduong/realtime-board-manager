@@ -12,7 +12,12 @@ export const authService = {
    */
   async sendVerificationCode(email: string): Promise<void> {
     const code = generateOTP();
-    await verificationCodeRepository.create(email, code);
+    await verificationCodeRepository.create({
+      email,
+      code,
+      expiresAt: new Date(Date.now() + 600000).toISOString() as any,
+      used: false,
+    });
     await emailService.sendVerificationCode(email, code);
   },
 
