@@ -1,18 +1,25 @@
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { disconnectSocket } from '@/socket/socket';
 import { SkipliLogo } from '@/components/SkipliLogo';
-import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut } from 'lucide-react';
+import { LayoutGrid, Rocket, LayoutDashboard, Users, LogOut, X, Loader2 } from 'lucide-react';
 import { cn } from '@/utils';
 import { useQuery } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
+import { authApi } from '@/services/auth.service';
 import avatarImg from '@/images/avata.png';
 
 function AppLayout() {
-  const { user, logout } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const { boardId } = useParams<{ boardId?: string }>();
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [updating, setUpdating] = useState(false);
+  const [msg, setMsg] = useState('');
 
   // Fetch current board if in board detail view
   const { data: currentBoard } = useQuery({
@@ -25,6 +32,24 @@ function AppLayout() {
     disconnectSocket();
     logout();
     navigate('/login');
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !displayName.trim()) return;
+    setUpdating(true);
+    setMsg('');
+    try {
+      const res = await authApi.updateProfile(user.id, { displayName });
+      setUser({ ...user, displayName: res.data.data.displayName });
+      setMsg('Profile updated successfully!');
+      setTimeout(() => setMsg(''), 2000);
+    } catch (err: unknown) {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setMsg(m ?? 'Failed to update profile');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const isBoardDetail = location.pathname.startsWith('/boards/') && boardId;
@@ -54,9 +79,9 @@ function AppLayout() {
 
           {/* Avatar image matching Figma SD circle */}
           <div
-            onClick={handleLogout}
+            onClick={() => setShowProfileModal(true)}
             className="w-7 h-7 rounded-full overflow-hidden border border-red-500 cursor-pointer hover:opacity-90 transition-opacity"
-            title={`Logged in as ${user?.displayName || user?.email} (Click to logout)`}
+            title={`Logged in as ${user?.displayName || user?.email} (Click for Account Settings)`}
           >
             <img src={avatarImg} alt="Avatar" className="w-full h-full object-cover" />
           </div>
@@ -84,6 +109,7 @@ function AppLayout() {
               </button>
 
               <button
+                onClick={() => setShowProfileModal(true)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded text-left font-medium hover:bg-trello-border/20 text-trello-text transition-colors"
               >
                 <Users className="w-4 h-4 text-slate-400" />
@@ -153,6 +179,63 @@ function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Account Settings / Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#282E33] border border-slate-700 text-slate-200 rounded-xl w-full max-w-sm p-6 space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <img src={avatarImg} alt="Avatar" className="w-12 h-12 rounded-full border border-red-500 object-cover" />
+              <div>
+                <h3 className="font-bold text-sm text-white">{user?.displayName || 'User'}</h3>
+                <p className="text-xs text-slate-400">{user?.email}</p>
+              </div>
+            </div>
+
+            {msg && (
+              <p className={cn('text-xs p-2 rounded', msg.includes('success') ? 'bg-emerald-950 text-emerald-300' : 'bg-red-950 text-red-300')}>
+                {msg}
+              </p>
+            )}
+
+            <form onSubmit={handleUpdateProfile} className="space-y-3 pt-2 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Display Name</label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="w-full bg-[#1D2125] border border-slate-700 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Log out
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  {updating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,4 +13,7 @@ export const authApi = {
 
   getMe: () =>
     api.get<{ data: User }>('/auth/me'),
+
+  updateProfile: (userId: string, data: { displayName?: string; avatar?: string }) =>
+    api.put<{ data: User }>(`/users/${userId}`, data),
 };

@@ -4,6 +4,7 @@ import authRoutes from './auth.routes';
 import boardRoutes from './board.routes';
 import cardRoutes from './card.routes';
 import githubRoutes from './github.routes';
+import userRoutes from './user.routes';
 import { createTaskRouter } from './task.routes';
 import { createInvitationRouter, createBoardInviteRouter } from './invitation.routes';
 
@@ -30,6 +31,9 @@ export const createRouter = (io?: SocketServer): Router => {
 
   // GitHub
   router.use('/github', githubRoutes);
+
+  // Users
+  router.use('/users', userRoutes);
 
   // Health check
   router.get('/health', (_req, res) => {
