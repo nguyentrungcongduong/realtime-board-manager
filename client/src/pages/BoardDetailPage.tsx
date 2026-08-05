@@ -89,27 +89,25 @@ function TaskCard({ task, onClick }: TaskCardProps) {
 // Kanban Column
 // ──────────────────────────────────────
 interface KanbanColumnProps {
-  column: { id: TaskStatus; label: string };
+  card: Card;
   tasks: Task[];
-  cards: Card[];
-  onDrop: (taskId: string, fromCardId: string, toStatus: TaskStatus) => void;
+  canDelete: boolean;
+  onDrop: (taskId: string, fromCardId: string, toCardId: string) => void;
   onOpenCreateModal: (cardId: string, status: TaskStatus) => void;
   onTaskClick: (task: Task) => void;
-  onDeleteCard?: (cardId: string) => void;
+  onDeleteCard: (cardId: string) => void;
 }
 
-function KanbanColumn({ column, tasks, cards, onDrop, onOpenCreateModal, onTaskClick, onDeleteCard }: KanbanColumnProps) {
+function KanbanColumn({ card, tasks, canDelete, onDrop, onOpenCreateModal, onTaskClick, onDeleteCard }: KanbanColumnProps) {
   const [{ isOver }, drop] = useDrop({
     accept: DND_TYPE,
     drop: (item: { taskId: string; cardId: string; status: TaskStatus }) => {
-      if (item.status !== column.id) {
-        onDrop(item.taskId, item.cardId, column.id);
+      if (item.cardId !== card.id) {
+        onDrop(item.taskId, item.cardId, card.id);
       }
     },
     collect: (monitor) => ({ isOver: monitor.isOver() }),
   });
-
-  const defaultCard = cards[0];
 
   return (
     <div
@@ -121,11 +119,11 @@ function KanbanColumn({ column, tasks, cards, onDrop, onOpenCreateModal, onTaskC
     >
       {/* Column Header */}
       <div className="flex items-center justify-between px-1 py-0.5">
-        <h4 className="font-bold text-xs text-slate-200">{column.label}</h4>
+        <h4 className="font-bold text-xs text-slate-200">{card.name}</h4>
         <div className="flex items-center gap-1">
-          {defaultCard && onDeleteCard && cards.length > 1 && (
+          {canDelete && (
             <button
-              onClick={() => onDeleteCard(defaultCard.id)}
+              onClick={() => onDeleteCard(card.id)}
               className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-0.5 transition-opacity"
               title="Delete list"
             >
@@ -144,15 +142,13 @@ function KanbanColumn({ column, tasks, cards, onDrop, onOpenCreateModal, onTaskC
       </div>
 
       {/* "+ Add a card" Button matching Figma */}
-      {defaultCard && (
-        <button
-          onClick={() => onOpenCreateModal(defaultCard.id, column.id)}
-          className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-slate-800/60 transition-colors mt-1"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add a card</span>
-        </button>
-      )}
+      <button
+        onClick={() => onOpenCreateModal(card.id, 'ongoing')}
+        className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2 py-1.5 rounded hover:bg-slate-800/60 transition-colors mt-1"
+      >
+        <Plus className="w-3.5 h-3.5" />
+        <span>Add a card</span>
+      </button>
     </div>
   );
 }
@@ -768,12 +764,6 @@ function InviteModal({ boardId, onClose }: { boardId: string; onClose: () => voi
 // ──────────────────────────────────────
 // Main Board Detail Page
 // ──────────────────────────────────────
-const COLUMNS: { id: TaskStatus; label: string }[] = [
-  { id: 'icebox',  label: 'To do' },
-  { id: 'ongoing', label: 'Doing' },
-  { id: 'done',    label: 'Done' },
-];
-
 function BoardDetailPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const queryClient = useQueryClient();
@@ -793,16 +783,20 @@ function BoardDetailPage() {
     enabled: !!boardId,
   });
 
-  // Fetch cards
+  // Fetch cards (Lists)
   const { data: cards = [] } = useQuery<Card[]>({
     queryKey: ['cards', boardId],
     queryFn: async () => (await cardApi.getAll(boardId!)).data.data,
     enabled: !!boardId,
   });
 
-  // Auto-create default Card if none exists
-  const createDefaultCardMutation = useMutation({
-    mutationFn: () => cardApi.create(boardId!, { name: 'Main Card', description: '' }),
+  // Auto-create 3 default Cards (Lists: To do, Doing, Done) if board has no cards yet
+  const createDefaultCardsMutation = useMutation({
+    mutationFn: async () => {
+      await cardApi.create(boardId!, { name: 'To do', description: '' });
+      await cardApi.create(boardId!, { name: 'Doing', description: '' });
+      await cardApi.create(boardId!, { name: 'Done', description: '' });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', boardId] }),
   });
 
@@ -814,7 +808,7 @@ function BoardDetailPage() {
   useEffect(() => {
     if (boardId && cards.length === 0 && !boardLoading && !hasCreatedCardRef[boardId]) {
       hasCreatedCardRef[boardId] = true;
-      createDefaultCardMutation.mutate();
+      createDefaultCardsMutation.mutate();
     }
   }, [cards.length, boardLoading, boardId]);
 
@@ -851,18 +845,18 @@ function BoardDetailPage() {
     };
   }, [boardId]);
 
-  // Mutations
+  // Move task across lists (cards)
   const moveTask = useMutation({
-    mutationFn: ({ taskId, cardId, status }: { taskId: string; cardId: string; status: TaskStatus }) =>
-      taskApi.update(boardId!, cardId, taskId, { status }),
-    onMutate: ({ taskId, status }) => {
-      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status } : t));
+    mutationFn: ({ taskId, fromCardId, toCardId }: { taskId: string; fromCardId: string; toCardId: string }) =>
+      taskApi.update(boardId!, fromCardId, taskId, { cardId: toCardId }),
+    onMutate: ({ taskId, toCardId }) => {
+      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, cardId: toCardId } : t));
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', boardId] }),
   });
 
-  const handleDrop = useCallback((taskId: string, fromCardId: string, toStatus: TaskStatus) => {
-    moveTask.mutate({ taskId, cardId: fromCardId, status: toStatus });
+  const handleDrop = useCallback((taskId: string, fromCardId: string, toCardId: string) => {
+    moveTask.mutate({ taskId, fromCardId, toCardId });
   }, [moveTask]);
 
   const handleOpenCreateModal = useCallback((cardId: string, status: TaskStatus) => {
@@ -937,7 +931,7 @@ function BoardDetailPage() {
           </button>
         </div>
 
-        {/* Main Kanban Canvas */}
+        {/* Main Kanban Canvas - Dynamic Column Rendering */}
         <div className="flex-1 p-6 overflow-x-auto flex gap-4 items-start bg-trello-workspace">
           {tasksLoading ? (
             <div className="flex justify-center py-12 w-full">
@@ -945,12 +939,12 @@ function BoardDetailPage() {
             </div>
           ) : (
             <>
-              {COLUMNS.map((col) => (
+              {cards.map((card) => (
                 <KanbanColumn
-                  key={col.id}
-                  column={col}
-                  tasks={filteredTasks.filter((t) => t.status === col.id)}
-                  cards={cards}
+                  key={card.id}
+                  card={card}
+                  canDelete={cards.length > 1}
+                  tasks={filteredTasks.filter((t) => t.cardId === card.id)}
                   onDrop={handleDrop}
                   onOpenCreateModal={handleOpenCreateModal}
                   onTaskClick={(t) => setSelectedTask(t)}
