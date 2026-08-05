@@ -11,7 +11,7 @@ import { Task, Card, TaskStatus, Board } from '@/types';
 import { cn, formatDate, isOverdue } from '@/utils';
 import {
   ArrowLeft, Plus, Loader2, Users, Calendar,
-  MoreHorizontal, Trash2, GripVertical, UserPlus,
+  Trash2, GripVertical, UserPlus,
   GitPullRequest, GitCommit, AlertCircle, X
 } from 'lucide-react';
 
@@ -33,11 +33,10 @@ const DND_TYPE = 'TASK';
 // ──────────────────────────────────────
 interface TaskCardProps {
   task: Task;
-  boardId: string;
   onDelete: (taskId: string, cardId: string) => void;
 }
 
-function TaskCard({ task, boardId, onDelete }: TaskCardProps) {
+function TaskCard({ task, onDelete }: TaskCardProps) {
   const [{ isDragging }, drag] = useDrag({
     type: DND_TYPE,
     item: { taskId: task.id, cardId: task.cardId, status: task.status },
@@ -117,13 +116,12 @@ interface KanbanColumnProps {
   column: typeof COLUMNS[0];
   tasks: Task[];
   cards: Card[];
-  boardId: string;
   onDrop: (taskId: string, fromCardId: string, toStatus: TaskStatus) => void;
   onDeleteTask: (taskId: string, cardId: string) => void;
   onAddTask: (cardId: string, status: TaskStatus) => void;
 }
 
-function KanbanColumn({ column, tasks, cards, boardId, onDrop, onDeleteTask, onAddTask }: KanbanColumnProps) {
+function KanbanColumn({ column, tasks, cards, onDrop, onDeleteTask, onAddTask }: KanbanColumnProps) {
   const [{ isOver }, drop] = useDrop({
     accept: DND_TYPE,
     drop: (item: { taskId: string; cardId: string; status: TaskStatus }) => {
@@ -159,7 +157,6 @@ function KanbanColumn({ column, tasks, cards, boardId, onDrop, onDeleteTask, onA
           <TaskCard
             key={task.id}
             task={task}
-            boardId={boardId}
             onDelete={onDeleteTask}
           />
         ))}
@@ -509,7 +506,6 @@ function BoardDetailPage() {
                 column={col}
                 tasks={tasks.filter((t) => t.status === col.id)}
                 cards={cards}
-                boardId={boardId!}
                 onDrop={handleDrop}
                 onDeleteTask={handleDeleteTask}
                 onAddTask={handleAddTask}
