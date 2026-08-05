@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createTaskService } from '../services/task.service';
 import { sendSuccess, sendCreated, sendNoContent } from '../utils/response';
+import { param } from '../utils/param';
 import { Server as SocketServer } from 'socket.io';
 import { z } from 'zod';
 
@@ -31,14 +32,14 @@ export const createTaskController = (io?: SocketServer) => {
   return {
     async getTasks(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        const tasks = await taskService.getTasks(req.params.boardId, req.params.cardId, req.user!.userId);
+        const tasks = await taskService.getTasks(param(req.params.boardId), param(req.params.cardId), req.user!.userId);
         sendSuccess(res, tasks);
       } catch (err) { next(err); }
     },
 
     async getTaskById(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        const task = await taskService.getTaskById(req.params.boardId, req.params.cardId, req.params.taskId, req.user!.userId);
+        const task = await taskService.getTaskById(param(req.params.boardId), param(req.params.cardId), param(req.params.taskId), req.user!.userId);
         sendSuccess(res, task);
       } catch (err) { next(err); }
     },
@@ -46,7 +47,7 @@ export const createTaskController = (io?: SocketServer) => {
     async createTask(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const data = createSchema.parse(req.body);
-        const task = await taskService.createTask(req.params.boardId, req.params.cardId, req.user!.userId, data);
+        const task = await taskService.createTask(param(req.params.boardId), param(req.params.cardId), req.user!.userId, data);
         sendCreated(res, task);
       } catch (err) { next(err); }
     },
@@ -54,14 +55,14 @@ export const createTaskController = (io?: SocketServer) => {
     async updateTask(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const data = updateSchema.parse(req.body);
-        const task = await taskService.updateTask(req.params.boardId, req.params.cardId, req.params.taskId, req.user!.userId, data);
+        const task = await taskService.updateTask(param(req.params.boardId), param(req.params.cardId), param(req.params.taskId), req.user!.userId, data);
         sendSuccess(res, task);
       } catch (err) { next(err); }
     },
 
     async deleteTask(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        await taskService.deleteTask(req.params.boardId, req.params.cardId, req.params.taskId, req.user!.userId);
+        await taskService.deleteTask(param(req.params.boardId), param(req.params.cardId), param(req.params.taskId), req.user!.userId);
         sendNoContent(res);
       } catch (err) { next(err); }
     },
@@ -69,14 +70,14 @@ export const createTaskController = (io?: SocketServer) => {
     async attachGitHub(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const data = attachSchema.parse(req.body);
-        const task = await taskService.attachGitHub(req.params.boardId, req.params.cardId, req.params.taskId, req.user!.userId, data);
+        const task = await taskService.attachGitHub(param(req.params.boardId), param(req.params.cardId), param(req.params.taskId), req.user!.userId, data);
         sendCreated(res, task);
       } catch (err) { next(err); }
     },
 
     async removeAttachment(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        const task = await taskService.removeGitHubAttachment(req.params.boardId, req.params.cardId, req.params.taskId, req.params.attachmentId, req.user!.userId);
+        const task = await taskService.removeGitHubAttachment(param(req.params.boardId), param(req.params.cardId), param(req.params.taskId), param(req.params.attachmentId), req.user!.userId);
         sendSuccess(res, task);
       } catch (err) { next(err); }
     },

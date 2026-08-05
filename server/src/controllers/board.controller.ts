@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { boardService } from '../services/board.service';
 import { sendSuccess, sendCreated, sendNoContent } from '../utils/response';
+import { param } from '../utils/param';
 import { z } from 'zod';
 
 const createSchema = z.object({
@@ -19,7 +20,7 @@ export const boardController = {
 
   async getBoardById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const board = await boardService.getBoardById(req.params.boardId, req.user!.userId);
+      const board = await boardService.getBoardById(param(req.params.boardId), req.user!.userId);
       sendSuccess(res, board);
     } catch (err) { next(err); }
   },
@@ -35,14 +36,14 @@ export const boardController = {
   async updateBoard(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const data = updateSchema.parse(req.body);
-      const board = await boardService.updateBoard(req.params.boardId, req.user!.userId, data);
+      const board = await boardService.updateBoard(param(req.params.boardId), req.user!.userId, data);
       sendSuccess(res, board);
     } catch (err) { next(err); }
   },
 
   async deleteBoard(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await boardService.deleteBoard(req.params.boardId, req.user!.userId);
+      await boardService.deleteBoard(param(req.params.boardId), req.user!.userId);
       sendNoContent(res);
     } catch (err) { next(err); }
   },

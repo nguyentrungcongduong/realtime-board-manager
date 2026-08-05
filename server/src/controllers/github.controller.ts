@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { githubService } from '../services/github.service';
 import { sendSuccess } from '../utils/response';
+import { param } from '../utils/param';
 import { env } from '../config/env';
 
 export const githubController = {
@@ -13,9 +14,8 @@ export const githubController = {
 
   async handleCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { code } = req.query as { code: string };
+      const code = param(req.query.code as string | string[]);
       await githubService.handleCallback(code, req.user!.userId);
-      // Redirect back to client
       res.redirect(`${env.CLIENT_URL}/github/connected`);
     } catch (err) { next(err); }
   },
@@ -29,7 +29,8 @@ export const githubController = {
 
   async getRepositoryInfo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { owner, repo } = req.params;
+      const owner = param(req.params.owner);
+      const repo = param(req.params.repo);
       const info = await githubService.getRepositoryInfo(req.user!.userId, owner, repo);
       sendSuccess(res, info);
     } catch (err) { next(err); }

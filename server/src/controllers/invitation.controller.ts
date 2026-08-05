@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createInvitationService } from '../services/invitation.service';
 import { sendSuccess, sendCreated, sendNoContent } from '../utils/response';
+import { param } from '../utils/param';
 import { Server as SocketServer } from 'socket.io';
 import { z } from 'zod';
 
@@ -14,7 +15,7 @@ export const createInvitationController = (io?: SocketServer) => {
     async invite(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const { memberEmail } = inviteSchema.parse(req.body);
-        const invitation = await invitationService.inviteMember(req.params.boardId, req.user!.userId, memberEmail);
+        const invitation = await invitationService.inviteMember(param(req.params.boardId), req.user!.userId, memberEmail);
         sendCreated(res, invitation);
       } catch (err) { next(err); }
     },
@@ -29,7 +30,7 @@ export const createInvitationController = (io?: SocketServer) => {
     async respond(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const { status } = respondSchema.parse(req.body);
-        await invitationService.respondToInvitation(req.params.invitationId, req.user!.userId, status);
+        await invitationService.respondToInvitation(param(req.params.invitationId), req.user!.userId, status);
         sendNoContent(res);
       } catch (err) { next(err); }
     },
