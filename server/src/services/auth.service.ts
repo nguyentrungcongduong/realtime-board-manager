@@ -8,7 +8,7 @@ import { User } from '../models';
 
 export const authService = {
   /**
-   * Step 1 of auth: Generate and send OTP to email
+   * Step 1: Generate and send OTP to email
    */
   async sendVerificationCode(email: string): Promise<void> {
     const code = generateOTP();
@@ -22,50 +22,36 @@ export const authService = {
   },
 
   /**
-   * Step 2 of signup: Verify OTP and create user account
+   * Step 2: Verify OTP -> Get or create user -> Return JWT token + User
    */
-  async signUp(email: string, verificationCode: string): Promise<User> {
+  async verifyAndAuthenticate(email: string, verificationCode: string): Promise<{ accessToken: string; user: User }> {
     const record = await verificationCodeRepository.findValid(email, verificationCode);
     if (!record) {
       throw new AppError('Invalid or expired verification code', 400);
-    }
-
-    const existing = await userRepository.findByEmail(email);
-    if (existing) {
-      throw new AppError('Email already registered', 409);
     }
 
     await verificationCodeRepository.markUsed(record.id);
 
-    const displayName = email.split('@')[0];
-    const user = await userRepository.create({
-      email,
-      displayName,
-      avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${displayName}`,
-    });
-
-    return user;
-  },
-
-  /**
-   * Step 2 of signin: Verify OTP and return JWT
-   */
-  async signIn(email: string, verificationCode: string): Promise<{ accessToken: string; user: User }> {
-    const record = await verificationCodeRepository.findValid(email, verificationCode);
-    if (!record) {
-      throw new AppError('Invalid or expired verification code', 400);
-    }
-
-    const user = await userRepository.findByEmail(email);
+    let user = await userRepository.findByEmail(email);
     if (!user) {
-      throw new AppError('User not found. Please sign up first.', 404);
+      const displayName = email.split('@')[0];
+      user = await userRepository.create({
+        email,
+        displayName,
+        avatar: `https://api.dicebear.com/8.x/initials/svg?seed=${displayName}`,
+      });
     }
-
-    await verificationCodeRepository.markUsed(record.id);
 
     const accessToken = signToken({ userId: user.id, email: user.email });
-
     return { accessToken, user };
+  },
+
+  async signUp(email: string, verificationCode: string): Promise<{ accessToken: string; user: User }> {
+    return this.verifyAndAuthenticate(email, verificationCode);
+  },
+
+  async signIn(email: string, verificationCode: string): Promise<{ accessToken: string; user: User }> {
+    return this.verifyAndAuthenticate(email, verificationCode);
   },
 
   async getMe(userId: string): Promise<User> {

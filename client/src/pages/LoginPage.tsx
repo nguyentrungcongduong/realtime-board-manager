@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,8 +24,15 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { setAuth } = useAuthStore();
+  const { isAuthenticated, setAuth } = useAuthStore();
   const navigate = useNavigate();
+
+  // If already logged in, redirect directly to /boards
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/boards', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema) });
   const codeForm = useForm<CodeForm>({ resolver: zodResolver(codeSchema) });
@@ -49,18 +56,10 @@ function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      try {
-        const res = await authApi.signIn(email, data.code);
-        const { accessToken, user } = res.data.data;
-        setAuth(user, accessToken);
-        navigate('/boards');
-      } catch {
-        await authApi.signUp(email, data.code);
-        const res = await authApi.signIn(email, data.code);
-        const { accessToken, user } = res.data.data;
-        setAuth(user, accessToken);
-        navigate('/boards');
-      }
+      const res = await authApi.signIn(email, data.code);
+      const { accessToken, user } = res.data.data;
+      setAuth(user, accessToken);
+      navigate('/boards', { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? 'Invalid or expired verification code');
