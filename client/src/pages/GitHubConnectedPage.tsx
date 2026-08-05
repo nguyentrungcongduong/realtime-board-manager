@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Github, CheckCircle2 } from 'lucide-react';
 
 function GitHubConnectedPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['github'] });
     const timer = setTimeout(() => {
       navigate('/boards');
-    }, 2500);
+    }, 2000);
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
