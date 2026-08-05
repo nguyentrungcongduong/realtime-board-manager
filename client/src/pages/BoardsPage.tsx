@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '@/services/board.service';
 import { useNavigate } from 'react-router-dom';
-import { Plus, LayoutDashboard, Users, Trash2, Pencil, Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { Board } from '@/types';
 import { useAuthStore } from '@/store/auth.store';
-import { cn, formatDate } from '@/utils';
 
 function BoardsPage() {
   const navigate = useNavigate();
@@ -15,21 +14,19 @@ function BoardsPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data: boards = [], isLoading } = useQuery<Board[]>({
     queryKey: ['boards'],
-    queryFn: async () => {
-      const res = await boardApi.getAll();
-      return res.data.data;
-    },
+    queryFn: async () => (await boardApi.getAll()).data.data,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: { name: string; description: string }) => boardApi.create(data),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['boards'] });
       setShowCreate(false);
       setName('');
       setDescription('');
+      navigate(`/boards/${res.data.data.id}`);
     },
   });
 
@@ -39,117 +36,104 @@ function BoardsPage() {
   });
 
   return (
-    <div className="animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900">
-            My <span className="gradient-text">Boards</span>
-          </h1>
-          <p className="text-slate-500 mt-1">Manage your projects and collaborate with your team</p>
-        </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary">
-          <Plus className="w-4 h-4" /> New Board
-        </button>
-      </div>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header matching Figma Image 3 */}
+      <div>
+        <h2 className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-4">
+          YOUR WORKSPACES
+        </h2>
 
-      {/* Create form */}
-      {showCreate && (
-        <div className="card p-6 mb-6 animate-fade-in border-indigo-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Create a new board</h2>
-          <div className="space-y-3">
-            <div>
-              <label className="label">Board name</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="input"
-                placeholder="e.g. Marketing Campaign Q3"
-              />
-            </div>
-            <div>
-              <label className="label">Description (optional)</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="input resize-none h-20"
-                placeholder="What is this board about?"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => createMutation.mutate({ name, description })}
-                disabled={!name.trim() || createMutation.isPending}
-                className="btn-primary"
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Board Cards */}
+            {boards.map((board) => (
+              <div
+                key={board.id}
+                onClick={() => navigate(`/boards/${board.id}`)}
+                className="relative bg-white text-slate-900 rounded p-4 h-28 cursor-pointer shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
               >
-                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Board'}
-              </button>
-              <button onClick={() => setShowCreate(false)} className="btn-secondary">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Board grid */}
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-        </div>
-      ) : data?.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mx-auto mb-4 shadow-button">
-            <LayoutDashboard className="w-8 h-8 text-white" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-700">No boards yet</h3>
-          <p className="text-slate-500 mt-1">Create your first board to get started</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data?.map((board: Board) => (
-            <div
-              key={board.id}
-              className="card p-5 cursor-pointer group"
-              onClick={() => navigate(`/boards/${board.id}`)}
-            >
-              {/* Board icon */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center shadow-button">
-                  <LayoutDashboard className="w-5 h-5 text-white" />
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 line-clamp-1">{board.name}</h3>
+                  {board.description && (
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">{board.description}</p>
+                  )}
                 </div>
-                {board.ownerId === user?.id && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); }}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">
+                    {board.members.length} member{board.members.length > 1 ? 's' : ''}
+                  </span>
+                  {board.ownerId === user?.id && (
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(board.id); }}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all"
+                      title="Delete board"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </div>
-                )}
-              </div>
-
-              <h3 className="font-bold text-slate-800 text-lg mb-1 line-clamp-1">{board.name}</h3>
-              <p className="text-sm text-slate-500 line-clamp-2 mb-4 min-h-[40px]">
-                {board.description || 'No description'}
-              </p>
-
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <div className={cn('flex items-center gap-1', 'text-slate-400')}>
-                  <Users className="w-3.5 h-3.5" />
-                  <span>{board.members.length} member{board.members.length !== 1 ? 's' : ''}</span>
+                  )}
                 </div>
-                <span>{formatDate(board.createdAt)}</span>
+              </div>
+            ))}
+
+            {/* "+ Create a new board" Card matching Figma */}
+            <div
+              onClick={() => setShowCreate(true)}
+              className="bg-trello-sidebar/80 border border-trello-border/60 hover:border-trello-border rounded p-4 h-28 cursor-pointer flex items-center justify-center text-trello-text hover:text-white transition-all text-xs font-medium"
+            >
+              <span>+ Create a new board</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create Board Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-trello-modal border border-trello-border text-trello-heading rounded-lg w-full max-w-sm p-5 space-y-4">
+            <h3 className="text-base font-bold text-white">Create board</h3>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Board title *</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-trello-workspace border border-trello-border px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-blue-500"
+                  placeholder="e.g. My Trello board"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-trello-workspace border border-trello-border px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-blue-500 resize-none h-16"
+                  placeholder="Optional board description..."
+                />
               </div>
             </div>
-          ))}
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createMutation.mutate({ name, description })}
+                disabled={!name.trim() || createMutation.isPending}
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded font-semibold text-xs transition-colors flex items-center gap-1.5"
+              >
+                {createMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Create'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

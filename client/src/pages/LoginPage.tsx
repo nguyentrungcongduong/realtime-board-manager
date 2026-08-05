@@ -3,23 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { LayoutDashboard, Mail, KeyRound, Loader2, ArrowRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { authApi } from '@/services/auth.service';
 import { useAuthStore } from '@/store/auth.store';
-import { cn } from '@/utils';
+import { SkipliLogo } from '@/components/SkipliLogo';
 
 type Step = 'email' | 'code';
-type Mode = 'signin' | 'signup';
 
-const emailSchema = z.object({ email: z.string().email('Invalid email address') });
-const codeSchema = z.object({ code: z.string().length(6, 'Code must be 6 digits') });
+const emailSchema = z.object({ email: z.string().email('Please enter a valid email') });
+const codeSchema = z.object({ code: z.string().min(1, 'Please enter code verification') });
 
 type EmailForm = z.infer<typeof emailSchema>;
 type CodeForm = z.infer<typeof codeSchema>;
 
 function LoginPage() {
   const [step, setStep] = useState<Step>('email');
-  const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,14 +47,14 @@ function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      if (mode === 'signin') {
+      // Try signin first, if user doesn't exist try signup then signin
+      try {
         const res = await authApi.signIn(email, data.code);
         const { accessToken, user } = res.data.data;
         setAuth(user, accessToken);
         navigate('/boards');
-      } else {
+      } catch {
         await authApi.signUp(email, data.code);
-        // Auto sign in after signup
         const res = await authApi.signIn(email, data.code);
         const { accessToken, user } = res.data.data;
         setAuth(user, accessToken);
@@ -71,129 +69,125 @@ function LoginPage() {
   };
 
   return (
-    <div className="card p-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center shadow-button">
-          <LayoutDashboard className="w-6 h-6 text-white" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-extrabold text-slate-900">
-            {step === 'email' ? (
-              <>Welcome to <span className="gradient-text">BoardManager</span></>
-            ) : (
-              'Check your email'
+    <div className="relative min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden">
+      {/* Bottom Left Illustration */}
+      <div className="hidden md:block absolute bottom-0 left-0 w-96 h-72 opacity-90 pointer-events-none">
+        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <path d="M0 220 L150 140 L300 220 L150 300 Z" fill="#00C2FF" opacity="0.3" />
+          <path d="M20 230 L150 160 L280 230 L150 300 Z" fill="#0052CC" opacity="0.6" />
+          <rect x="120" y="80" width="80" height="110" rx="4" fill="#E6F0FF" stroke="#0052CC" strokeWidth="3" />
+          <line x1="135" y1="100" x2="185" y2="100" stroke="#0052CC" strokeWidth="4" strokeLinecap="round" />
+          <line x1="135" y1="120" x2="175" y2="120" stroke="#00C2FF" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="60" cy="180" r="10" fill="#EA3829" />
+          <path d="M60 190 L60 220 M45 200 L75 200" stroke="#EA3829" strokeWidth="3" />
+        </svg>
+      </div>
+
+      {/* Bottom Right Illustration */}
+      <div className="hidden md:block absolute bottom-0 right-0 w-96 h-72 opacity-90 pointer-events-none">
+        <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <path d="M100 220 L250 140 L400 220 L250 300 Z" fill="#00C2FF" opacity="0.3" />
+          <rect x="230" y="60" width="100" height="130" rx="6" fill="#FFFFFF" stroke="#0052CC" strokeWidth="3" />
+          <circle cx="280" cy="110" r="18" fill="#0052CC" opacity="0.2" />
+          <path d="M260 150 L300 150" stroke="#0052CC" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="350" cy="120" r="22" stroke="#0052CC" strokeWidth="4" fill="none" />
+          <line x1="335" y1="135" x2="315" y2="155" stroke="#0052CC" strokeWidth="5" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      {/* Main Login/Verification Card */}
+      <div className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded-sm p-8 shadow-sm text-center">
+        {step === 'email' ? (
+          <>
+            {/* Logo */}
+            <div className="flex justify-center mb-4">
+              <SkipliLogo className="w-10 h-10" />
+            </div>
+
+            <p className="text-xs font-semibold text-slate-500 mb-6">Log in to continue</p>
+
+            {error && (
+              <div className="mb-4 text-xs text-red-600 bg-red-50 p-2.5 rounded border border-red-200">
+                {error}
+              </div>
             )}
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {step === 'email'
-              ? 'Sign in or create an account to get started'
-              : `We sent a 6-digit code to ${email}`}
+
+            <form onSubmit={emailForm.handleSubmit(handleSendCode)} className="space-y-4">
+              <div>
+                <input
+                  {...emailForm.register('email')}
+                  type="email"
+                  placeholder="Enter your email"
+                  className="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800 placeholder-slate-400"
+                  disabled={loading}
+                />
+                {emailForm.formState.errors.email && (
+                  <p className="mt-1 text-left text-xs text-red-500">{emailForm.formState.errors.email.message}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Email Verification</h1>
+            <p className="text-xs text-slate-500 mb-6">Please enter your code that send to your email address</p>
+
+            {error && (
+              <div className="mb-4 text-xs text-red-600 bg-red-50 p-2.5 rounded border border-red-200">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={codeForm.handleSubmit(handleVerify)} className="space-y-4">
+              <div>
+                <input
+                  {...codeForm.register('code')}
+                  type="text"
+                  placeholder="Enter code verification"
+                  className="w-full px-3 py-2 border border-slate-300 rounded text-sm text-center tracking-widest font-mono focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800 placeholder-slate-400"
+                  disabled={loading}
+                  autoFocus
+                />
+                {codeForm.formState.errors.code && (
+                  <p className="mt-1 text-left text-xs text-red-500">{codeForm.formState.errors.code.message}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setStep('email'); setError(null); }}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                ← Change email address
+              </button>
+            </form>
+          </>
+        )}
+
+        {/* Footer Privacy Notice */}
+        <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-1">
+          <p className="hover:underline cursor-pointer">Privacy Policy</p>
+          <p className="leading-tight px-4">
+            This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.
           </p>
         </div>
       </div>
-
-      {/* Mode toggle (only on email step) */}
-      {step === 'email' && (
-        <div className="flex rounded-lg border border-slate-200 p-1 mb-6">
-          {(['signin', 'signup'] as Mode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={cn(
-                'flex-1 py-2 rounded-md text-sm font-semibold transition-all duration-200',
-                mode === m
-                  ? 'gradient-bg text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              {m === 'signin' ? 'Sign In' : 'Sign Up'}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 animate-fade-in">
-          {error}
-        </div>
-      )}
-
-      {/* Step: Email */}
-      {step === 'email' && (
-        <form onSubmit={emailForm.handleSubmit(handleSendCode)} className="space-y-4">
-          <div>
-            <label className="label">Email address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                {...emailForm.register('email')}
-                type="email"
-                placeholder="you@example.com"
-                className="input pl-10"
-                disabled={loading}
-              />
-            </div>
-            {emailForm.formState.errors.email && (
-              <p className="mt-1 text-xs text-red-500">{emailForm.formState.errors.email.message}</p>
-            )}
-          </div>
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>Send verification code <ArrowRight className="w-4 h-4" /></>
-            )}
-          </button>
-        </form>
-      )}
-
-      {/* Step: Code */}
-      {step === 'code' && (
-        <form onSubmit={codeForm.handleSubmit(handleVerify)} className="space-y-4">
-          <div>
-            <label className="label">Verification code</label>
-            <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                {...codeForm.register('code')}
-                type="text"
-                placeholder="123456"
-                maxLength={6}
-                className="input pl-10 tracking-widest font-mono text-center text-lg"
-                disabled={loading}
-                autoFocus
-              />
-            </div>
-            {codeForm.formState.errors.code && (
-              <p className="mt-1 text-xs text-red-500">{codeForm.formState.errors.code.message}</p>
-            )}
-          </div>
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Continue'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setStep('email'); setError(null); codeForm.reset(); }}
-            className="btn-ghost w-full text-slate-500"
-          >
-            ← Back to email
-          </button>
-        </form>
-      )}
-
-      {/* Divider */}
-      <div className="my-6 flex items-center gap-3">
-        <div className="flex-1 h-px bg-slate-200" />
-        <span className="text-xs text-slate-400 font-medium">or</span>
-        <div className="flex-1 h-px bg-slate-200" />
-      </div>
-
-      {/* GitHub OAuth placeholder */}
-      <p className="text-center text-xs text-slate-400">
-        GitHub sign-in available after connecting your account in settings
-      </p>
     </div>
   );
 }
