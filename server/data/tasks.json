@@ -3,14 +3,22 @@
     "cardId": "card_1785949636476_ep143",
     "boardId": "board_1785949636189_mywcr",
     "title": "super",
-    "description": "",
+    "description": "à thì melm\n",
     "status": "ongoing",
     "priority": "medium",
     "deadline": null,
-    "assigneeId": null,
-    "githubAttachments": [],
+    "assigneeId": "user_1785950831211_emg5v",
+    "githubAttachments": [
+      {
+        "id": "3b86a059-40d0-48be-a705-75106740f0bf",
+        "type": "pull_request",
+        "number": 42,
+        "title": "GitHub pull_request #hehllo aaa #1113",
+        "url": "https://github.com/nguyentrungcongduong/realtime-board-manager/pull/hehllo aaa #1113"
+      }
+    ],
     "id": "task_1785949654348_7r0ty",
     "createdAt": "2026-08-05T17:07:34.348Z",
-    "updatedAt": "2026-08-05T17:07:34.348Z"
+    "updatedAt": "2026-08-05T17:47:21.302Z"
   }
 }

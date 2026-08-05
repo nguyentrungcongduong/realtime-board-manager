@@ -437,13 +437,23 @@ function TaskDetailModal({ task, listName, boardMembers = [], ownerId, onClose, 
     const inputToUse = presetValue ? String(presetValue.val) : githubInput;
     if (!inputToUse.trim()) return;
 
+    let parsedNumber: number | undefined = undefined;
+    let parsedSha: string | undefined = undefined;
+
+    if (typeToUse === 'commit') {
+      parsedSha = inputToUse.trim();
+    } else {
+      const match = inputToUse.match(/\d+/);
+      parsedNumber = match ? parseInt(match[0], 10) : 1;
+    }
+
     try {
       await taskApi.attachGitHub(task.boardId, task.cardId, task.id, {
         type: typeToUse,
-        number: typeToUse !== 'commit' ? parseInt(inputToUse, 10) || 42 : undefined,
-        sha: typeToUse === 'commit' ? inputToUse : undefined,
-        title: `GitHub ${typeToUse} #${inputToUse}`,
-        url: `https://github.com/nguyentrungcongduong/realtime-board-manager/${typeToUse === 'pull_request' ? 'pull' : typeToUse === 'issue' ? 'issues' : 'commit'}/${inputToUse}`
+        number: parsedNumber,
+        sha: parsedSha,
+        title: inputToUse.trim(),
+        url: `https://github.com/nguyentrungcongduong/realtime-board-manager/${typeToUse === 'pull_request' ? 'pull' : typeToUse === 'issue' ? 'issues' : 'commit'}/${parsedNumber ?? parsedSha}`
       });
       setShowGithubMenu(false);
       setGithubInput('');
