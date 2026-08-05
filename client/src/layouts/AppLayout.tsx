@@ -208,15 +208,25 @@ function AppLayout() {
               <div>
                 <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold mb-3">
                   <Users className="w-3.5 h-3.5" />
-                  <span>Members</span>
+                  <span>Members ({currentBoard?.members.length || 0})</span>
                 </div>
                 <div className="space-y-2.5 pl-2">
-                  {currentBoard?.members.map((memberId, idx) => (
-                    <div key={memberId} className="flex items-center gap-2 text-xs text-slate-300">
-                      <img src={avatarImg} alt="Avatar" className="w-5 h-5 rounded-full object-cover" />
-                      <span>{idx === 0 ? 'User 1 (Owner)' : `User ${idx + 1}`}</span>
-                    </div>
-                  ))}
+                  {currentBoard?.members.map((memberId) => {
+                    const isCurrentUser = memberId === user?.id;
+                    const isOwner = memberId === currentBoard.ownerId;
+                    const nameToDisplay = isCurrentUser
+                      ? (user?.displayName || user?.email?.split('@')[0] || 'User')
+                      : (isOwner ? 'Board Owner' : `Member (${memberId.slice(0, 6)})`);
+
+                    return (
+                      <div key={memberId} className="flex items-center gap-2 text-xs text-slate-300">
+                        <img src={avatarImg} alt="Avatar" className="w-5 h-5 rounded-full border border-slate-700 object-cover" />
+                        <span className="truncate">
+                          {nameToDisplay} {isOwner && <span className="text-amber-400 font-semibold text-[10px] ml-1">(Owner)</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

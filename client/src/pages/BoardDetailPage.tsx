@@ -774,7 +774,6 @@ function BoardDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<TaskPriority | 'all'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
-  const hasCreatedCardRef = useState<{ [key: string]: boolean }>({})[0];
 
   // Fetch board info
   const { data: board, isLoading: boardLoading, isError: boardError } = useQuery<Board>({
@@ -800,16 +799,7 @@ function BoardDetailPage() {
     enabled: !!boardId,
   });
 
-  // Auto-create 3 default Cards (Lists: To do, Doing, Done) if board has no cards yet
-  const createDefaultCardsMutation = useMutation({
-    mutationFn: async () => {
-      await cardApi.create(boardId!, { name: 'To do', description: '' });
-      await cardApi.create(boardId!, { name: 'Doing', description: '' });
-      await cardApi.create(boardId!, { name: 'Done', description: '' });
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', boardId] }),
-  });
-
+  // Delete card list mutation
   const deleteCardMutation = useMutation({
     mutationFn: (cardId: string) => cardApi.delete(boardId!, cardId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', boardId] }),
@@ -829,13 +819,6 @@ function BoardDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks', boardId] });
     },
   });
-
-  useEffect(() => {
-    if (boardId && cards.length === 0 && !boardLoading && !hasCreatedCardRef[boardId]) {
-      hasCreatedCardRef[boardId] = true;
-      createDefaultCardsMutation.mutate();
-    }
-  }, [cards.length, boardLoading, boardId]);
 
   // Fetch all tasks
   const { data: fetchedTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({

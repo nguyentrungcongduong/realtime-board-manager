@@ -1,4 +1,5 @@
 import { boardRepository } from '../repositories/board.repository';
+import { cardRepository } from '../repositories/card.repository';
 import { AppError } from '../middleware/error.middleware';
 import { Board } from '../models';
 
@@ -43,12 +44,19 @@ export const boardService = {
     userId: string,
     data: { name: string; description: string }
   ): Promise<Board> {
-    return boardRepository.create({
+    const board = await boardRepository.create({
       name: data.name,
       description: data.description,
       ownerId: userId,
       members: [userId],
     });
+
+    // Automatically initialize standard cards for new board
+    await cardRepository.create({ boardId: board.id, name: 'To do', description: '', createdBy: userId });
+    await cardRepository.create({ boardId: board.id, name: 'Doing', description: '', createdBy: userId });
+    await cardRepository.create({ boardId: board.id, name: 'Done', description: '', createdBy: userId });
+
+    return board;
   },
 
   async updateBoard(
