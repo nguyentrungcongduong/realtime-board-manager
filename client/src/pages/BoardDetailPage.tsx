@@ -369,11 +369,12 @@ function CreateTaskModal({ boardId, cardId, status, onClose, onCreated }: Create
 // ──────────────────────────────────────
 interface TaskDetailModalProps {
   task: Task;
+  listName?: string;
   onClose: () => void;
   onUpdate: () => void;
 }
 
-function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
+function TaskDetailModal({ task, listName, onClose, onUpdate }: TaskDetailModalProps) {
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState<TaskPriority>(task.priority || 'medium');
   const [comment, setComment] = useState('');
@@ -449,12 +450,14 @@ function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header */}
+        {/* Modal Header matching Figma Image 5 */}
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
             💳 {task.title}
           </h2>
-          <p className="text-xs text-slate-400">in list <span className="underline">{task.status}</span></p>
+          <p className="text-xs text-slate-400">
+            in list <span className="underline font-semibold text-slate-200">{listName || 'To do'}</span>
+          </p>
         </div>
 
         {/* Priority Selector & Members bar */}
@@ -1011,6 +1014,7 @@ function BoardDetailPage() {
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
+          listName={cards.find((c) => c.id === selectedTask.cardId)?.name}
           onClose={() => setSelectedTask(null)}
           onUpdate={() => queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })}
         />
